@@ -1,0 +1,105 @@
+<h2>Issued Certificates</h2>
+
+<form class="row gy-2 gx-2 align-items-end mb-3" method="get">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+  <div class="col-sm-6">
+    <label class="form-label">Search</label>
+    <input name="q" class="form-control" placeholder="serial, CN, email, DNS, reason…" value="<%= q %>">
+  </div>
+  <div class="col-sm-2">
+    <label class="form-label">Page size</label>
+    <select name="pageSize" class="form-select">
+      <% [10,20,50,100].forEach(sz => { %>
+        <option value="<%= sz %>" <%= pageSize===sz?'selected':'' %>><%= sz %></option>
+      <% }) %>
+    </select>
+  </div>
+  <div class="col-sm-2">
+    <label class="form-label">Sort by</label>
+    <select name="sortBy" class="form-select">
+      <% const opts = [
+        ['not_after','Not After'],
+        ['not_before','Not Before'],
+        ['subject_cn','CN'],
+        ['serial_hex','Serial'],
+        ['revoked_at','Revoked At'],
+        ['renewed_from','Renewed From']
+      ];
+      opts.forEach(([val,label]) => { %>
+        <option value="<%= val %>" <%= sortBy===val?'selected':'' %>><%= label %></option>
+      <% }) %>
+    </select>
+  </div>
+  <div class="col-sm-2">
+    <label class="form-label">Direction</label>
+    <select name="sortDir" class="form-select">
+      <option value="desc" <%= sortDir==='desc'?'selected':'' %>>Desc</option>
+      <option value="asc"  <%= sortDir==='asc' ?'selected':'' %>>Asc</option>
+    </select>
+  </div>
+  <div class="col-sm-12 col-md-2">
+    <button class="btn btn-primary w-100" type="submit">Apply</button>
+  </div>
+</form>
+
+<div class="table-responsive">
+  <table class="table table-sm table-striped align-middle">
+    <thead>
+      <tr>
+        <th>Serial</th>
+        <th>CN</th>
+        <th>Not Before</th>
+        <th>Not After</th>
+        <th>SANs</th>
+        <th>Revoked</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (!rows.length) { %>
+        <tr><td colspan="6" class="text-center text-muted py-4">No certificates found.</td></tr>
+      <% } %>
+      <% rows.forEach(r => { 
+           const sans = r.sans_json ? JSON.parse(r.sans_json) : [];
+           const sanStr = sans.map(s => s.value).join(', ');
+      %>
+        <tr>
+          <td><code><%= r.serial_hex %></code></td>
+          <td><%= r.subject_cn || '' %></td>
+          <td><%= (r.not_before || '').replace('T',' ').replace('Z','') %></td>
+          <td><%= (r.not_after  || '').replace('T',' ').replace('Z','') %></td>
+          <td class="text-truncate" style="max-width: 280px" title="<%= sanStr %>"><%= sanStr %></td>
+          <td>
+            <% if (r.revoked_at) { %>
+              <span class="badge bg-danger">Yes</span>
+              <div class="small text-muted"><%= r.reason || '' %></div>
+              <div class="small text-muted"><%= (r.revoked_at || '').replace('T',' ').replace('Z','') %></div>
+            <% } else { %>
+              <span class="badge bg-success">No</span>
+            <% } %>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<% if (totalPages > 1) { %>
+<nav>
+  <ul class="pagination">
+    <% const base = `?q=${qEnc}&pageSize=${pageSize}&sortBy=${sortBy}&sortDir=${sortDir}`; %>
+    <li class="page-item <%= page===1?'disabled':'' %>">
+      <a class="page-link" href="<%= page===1 ? '#' : base + '&page=' + (page-1) %>">Prev</a>
+    </li>
+
+    <% pages.forEach(p => { %>
+      <li class="page-item <%= p===page?'active':'' %>">
+        <a class="page-link" href="<%= base + '&page=' + p %>"><%= p %></a>
+      </li>
+    <% }) %>
+
+    <li class="page-item <%= page===totalPages?'disabled':'' %>">
+      <a class="page-link" href="<%= page===totalPages ? '#' : base + '&page=' + (page+1) %>">Next</a>
+    </li>
+  </ul>
+</nav>
+<% } %>

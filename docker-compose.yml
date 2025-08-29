@@ -1,0 +1,41 @@
+services:
+
+  # app:
+  #   build: .
+  #   container_name: stepca-ui
+  #   environment:
+  #     - PORT=3000
+  #     - STEP_CA_URL=https://step-ca:8443
+  #     - PROVISIONER_NAME=admin@example.com
+  #     - PROVISIONER_KID=
+  #     - PROVISIONER_PRIVATE_JWK_JSON=
+  #     - STEP_CA_ROOT_PEM_B64=
+  #     - ENABLE_CA_LIFECYCLE=false
+  #     # OIDC Settings - point to Dev OIDC Toolkit
+  #     - OIDC_ISSUER=http://dev-oidc:8080
+  #     - OIDC_CLIENT_ID=client
+  #     - OIDC_CLIENT_SECRET=secret
+  #     - OIDC_REDIRECT_URI=http://localhost:3000/auth/callback
+  #     - OIDC_SCOPES=openid profile email
+  #     - SESSION_SECRET=change_me
+  #     - TRUST_PROXY=false
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - step-ca
+  #     - dev-oidc
+
+  dev-oidc:
+    image: ghcr.io/businesssimulations/dev-oidc-toolkit:latest
+    container_name: dev-oidc
+    ports:
+      - "8080:8080"
+    environment:
+      # Define a test user
+      - DevOidcToolkit__Users__0__Email=test@localhost
+      - DevOidcToolkit__Users__0__FirstName=Test
+      - DevOidcToolkit__Users__0__LastName=User
+      # Define a client for your Express app
+      - DevOidcToolkit__Clients__0__Id=client
+      - DevOidcToolkit__Clients__0__Secret=secret
+      - DevOidcToolkit__Clients__0__RedirectUris__0=http://localhost:3000/auth/callback

@@ -1,0 +1,40 @@
+<h2>Issue S/MIME (PKCS#12)</h2>
+<form method="post" action="/certs/smime" class="row g-3">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+  <div class="col-md-6">
+    <label class="form-label">Email Address</label>
+    <input class="form-control" name="email" type="email" placeholder="user@example.com" required>
+  </div>
+
+  <div class="col-md-6">
+    <label class="form-label">Display Name (optional)</label>
+    <input class="form-control" name="name" placeholder="User Name">
+  </div>
+
+  <div class="col-md-6">
+    <label class="form-label">PKCS#12 Password</label>
+    <input class="form-control" name="password" type="password" required>
+  </div>
+
+  <hr>
+  
+  <% if (smtpConfigured) { %>
+    <div class="col-12 form-check mt-2">
+      <input class="form-check-input" type="checkbox" id="sendEmail" name="sendEmail">
+      <label class="form-check-label" for="sendEmail">
+        Email this .p12 to the recipient
+      </label>
+    </div>
+  <% } else { %>
+    <div class="col-12 mt-2">
+      <div class="alert alert-warning">
+        SMTP is not configured, so email delivery is disabled. The certificate will only be available for download.
+      </div>
+    </div>
+  <% } %>
+
+  <div class="col-12">
+    <button class="btn btn-primary" type="submit">Generate .p12</button>
+  </div>
+</form>

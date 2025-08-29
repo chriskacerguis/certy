@@ -1,0 +1,26 @@
+<h2>Issue TLS Certificate</h2>
+<form method="post" action="/certs/issue" class="row g-3">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <div class="col-md-6">
+    <label class="form-label">Common Name</label>
+    <input class="form-control" name="commonName" placeholder="api.internal.example" required>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Subject Alternative Names (comma-sep)</label>
+    <input class="form-control" name="sans" placeholder="api.internal.example,10.0.0.12">
+  </div>
+  <div class="col-md-3">
+    <label class="form-label">Validity (days)</label>
+    <input class="form-control" name="days" type="number" value="365" min="1" max="825">
+  </div>
+  <div class="col-md-3">
+    <label class="form-label">Key Type</label>
+    <select name="keyType" class="form-select">
+      <option>EC</option>
+      <option>RSA</option>
+    </select>
+  </div>
+  <div class="col-12">
+    <button class="btn btn-primary" type="submit">Generate & Download</button>
+  </div>
+</form>

@@ -1,0 +1,1 @@
+INSERT OR IGNORE INTO meta(key, value) VALUES ('next_serial', '1000');
