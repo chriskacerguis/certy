@@ -10,7 +10,8 @@
     "format": "prettier -w .",
     "migrate": "node src/services/migrate.js",
     "test": "jest --runInBand",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "test:coverage": "JEST_WORKER_ID=1 node ./node_modules/jest/bin/jest.js --coverage --runInBand"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.878.0",
