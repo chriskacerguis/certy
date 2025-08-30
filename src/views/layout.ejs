@@ -45,6 +45,13 @@
       (<code>AUTH_OPTIONAL=true</code> or OIDC not configured).
     </div>
   <% } %>
+  <% if (Array.isArray(flashMessages) && flashMessages.length) { %>
+    <% flashMessages.forEach(m => { %>
+      <div class="alert alert-<%= m.type === 'error' ? 'danger' : (m.type === 'warn' ? 'warning' : 'success') %>" role="alert">
+        <%= m.text %>
+      </div>
+    <% }) %>
+  <% } %>
   <%- typeof body !== 'undefined' ? body : '' %>
   <%- typeof content !== 'undefined' ? content : '' %>
 </main>

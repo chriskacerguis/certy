@@ -8,6 +8,7 @@ const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 const expressLayouts = require('express-ejs-layouts');
 const session = require('express-session');
+const { flashMiddleware } = require('./middleware/flash');
 const oidcService = require('./services/auth/oidc');
 
 const createHttpLogger = require('./middleware/httpLogger');
@@ -54,6 +55,9 @@ app.use(session({
     maxAge: 1000 * 60 * 60 * 8, // 8h
   },
 }));
+
+// Flash messages (must be after session)
+app.use(flashMiddleware);
 
 // Make user available in all views (fixes "user is not defined")
 app.use((req, res, next) => {

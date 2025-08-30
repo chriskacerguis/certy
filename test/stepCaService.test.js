@@ -88,39 +88,4 @@ describe('stepCaService keystore + issuance', () => {
     expect(rootPem).toContain('BEGIN CERTIFICATE');
   });
 
-  test('migrates legacy PEM files into DB on first run', async () => {
-    freshEnv();
-    const step = loadStep();
-    // Simulate legacy: initialize once to create DB-backed values
-    await step.initCA({ name: 'LegacyCA' });
-    const root = await step.fetchRootPEM();
-    const intm = await step.fetchIntermediatesPEM();
-    // Recreate the private keys in PEM from DB by dumping directly (for test simplicity, fetch from keystore)
-  const Database = require('better-sqlite3');
-  // Ensure the directory for the DB exists before opening
-  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-  const db = new Database(DB_PATH);
-    const rows = db.prepare('SELECT name,pem FROM keystore').all();
-    const rootKeyRow = rows.find(r => r.name === 'root_key_pem');
-    const intKeyRow = rows.find(r => r.name === 'intermediate_key_pem');
-    // If encrypted, we can’t decode here; instead rely on existing DB import path. For legacy migration demo, ensure plaintext by clearing secret.
-    expect(rootKeyRow).toBeTruthy();
-    expect(intKeyRow).toBeTruthy();
-    // Write legacy copies
-    const certDir = path.join(CA_DIR, 'certs');
-    const keyDir = path.join(CA_DIR, 'private');
-    fs.mkdirSync(certDir, { recursive: true });
-    fs.mkdirSync(keyDir, { recursive: true });
-    fs.writeFileSync(path.join(certDir, 'root.crt.pem'), root);
-    fs.writeFileSync(path.join(certDir, 'intermediate.crt.pem'), intm);
-    fs.writeFileSync(path.join(keyDir, 'root.key.pem'), rootKeyRow.pem.startsWith('ENCv1:') ? 'DUMMY' : rootKeyRow.pem);
-    fs.writeFileSync(path.join(keyDir, 'intermediate.key.pem'), intKeyRow.pem.startsWith('ENCv1:') ? 'DUMMY' : intKeyRow.pem);
-    // Create a fresh DB and ensure import runs
-    fs.rmSync(DB_PATH, { force: true });
-    jest.resetModules();
-    const step2 = loadStep();
-    // If keys were encrypted earlier, legacy import won’t have valid key files; ensure init is true by relying on DB copy.
-    const ok = await step2.isInitialized();
-    expect(typeof ok).toBe('boolean');
-  });
 });

@@ -1,5 +1,6 @@
 <h2>Issue TLS Certificate</h2>
-<form method="post" action="/certs/issue" class="row g-3">
+<div id="flash-inline"></div>
+<form id="issue-form" method="post" action="/certs/issue" class="row g-3">
   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
   <div class="col-md-6">
     <label class="form-label">Common Name</label>
@@ -21,6 +22,7 @@
     </select>
   </div>
   <div class="col-12">
-    <button class="btn btn-primary" type="submit">Generate & Download</button>
+  <button id="issue-submit" class="btn btn-primary" type="submit">Generate & Download</button>
   </div>
 </form>
+<script src="/public/js/cert.js"></script>

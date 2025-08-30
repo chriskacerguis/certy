@@ -9,13 +9,7 @@ const { db, tx, getMeta, setMeta, allocateSerialHex } = require('./db');
 const { pki, md, asn1 } = forge;
 
 const CA_DIR = process.env.LOCAL_CA_DIR || path.join(process.cwd(), '.local-ca');
-const DIR_CERTS = path.join(CA_DIR, 'certs'); // legacy
-const DIR_KEYS  = path.join(CA_DIR, 'private'); // legacy
-
-const FILE_ROOT_CRT = path.join(DIR_CERTS, 'root.crt.pem'); // legacy
-const FILE_INT_CRT  = path.join(DIR_CERTS, 'intermediate.crt.pem'); // legacy
-const FILE_ROOT_KEY = path.join(DIR_KEYS,  'root.key.pem'); // legacy
-const FILE_INT_KEY  = path.join(DIR_KEYS,  'intermediate.key.pem'); // legacy
+// legacy filesystem paths removed; keystore is SQLite-only
 
 // Old JSON files (for one-time migration if present)
 const FILE_SERIAL_OLD = path.join(CA_DIR, 'serial.json');
@@ -30,13 +24,9 @@ const INT_KEY_BITS  = parseInt(process.env.CA_INT_KEY_BITS  || '3072', 10);
 const CRL_URL = (process.env.S3_CRL_PUBLIC_URL || '').trim();
 
 function ensureDirs() {
-  // Keep for legacy JSON migration and DB location only; keys/certs are now in SQLite.
-  [CA_DIR, DIR_CERTS, DIR_KEYS].forEach(d => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true, mode: 0o700 }); });
+  // Ensure base CA directory for DB and logs
+  if (!fs.existsSync(CA_DIR)) fs.mkdirSync(CA_DIR, { recursive: true, mode: 0o700 });
 }
-
-function readIfExists(file) { return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null; }
-// New storage is SQLite; keep writePEM only for legacy migration paths.
-function writePEM(file, pem) { fs.writeFileSync(file, pem, { mode: 0o600 }); }
 
 function expose(status, message) { const e = new Error(message); e.status = status; e.expose = true; return e; }
 
@@ -207,41 +197,13 @@ async function migrateFromJsonIfPresent() {
   }
 }
 
-async function migratePemFilesToDBIfPresent() {
-  try {
-    // If keystore already populated, skip.
-    const hasRoot = !!getPem('root_cert_pem') && !!getPem('root_key_pem');
-    const hasInt  = !!getPem('intermediate_cert_pem') && !!getPem('intermediate_key_pem');
-    if (hasRoot && hasInt) return;
-
-    const legacyRootCrt = readIfExists(FILE_ROOT_CRT);
-    const legacyRootKey = readIfExists(FILE_ROOT_KEY);
-    const legacyIntCrt  = readIfExists(FILE_INT_CRT);
-    const legacyIntKey  = readIfExists(FILE_INT_KEY);
-
-    if (legacyRootCrt && legacyRootKey) {
-      tx(() => {
-        setPem('root_cert_pem', legacyRootCrt);
-        setPem('root_key_pem', legacyRootKey);
-      });
-    }
-    if (legacyIntCrt && legacyIntKey) {
-      tx(() => {
-        setPem('intermediate_cert_pem', legacyIntCrt);
-        setPem('intermediate_key_pem', legacyIntKey);
-      });
-    }
-  } catch {
-    // ignore
-  }
-}
+// Legacy PEM migration removed; only JSON index migration remains for historical records
 
 // ------------------ Public API (unchanged signatures) ------------------
 
 exports.isInitialized = async () => {
   ensureDirs();
   await migrateFromJsonIfPresent();
-  await migratePemFilesToDBIfPresent();
   const rootCert = getPem('root_cert_pem');
   const rootKey  = getPem('root_key_pem');
   const intCert  = getPem('intermediate_cert_pem');

@@ -5,6 +5,7 @@ const { generateKeyAndCsr } = require('../utils/csr');
 const { extractSerialDecimal } = require('../utils/x509');
 const audit = require('../services/auditService');
 const mail = require('../services/mailService');
+const { addFlash } = require('../middleware/flash');
 
 // ----- TLS issuance -----
 exports.renderIssuePage = async (req, res, next) => {
@@ -43,7 +44,9 @@ exports.issueCertificate = async (req, res, next) => {
     });
   const intermediatePem = await step.fetchIntermediatesPEM();
 
-    audit.event('ISSUE_CERT', { cn: commonName, sans: sanArr, days: Number(days) });
+  audit.event('ISSUE_CERT', { cn: commonName, sans: sanArr, days: Number(days) });
+  // Notify user in UI that the operation succeeded; download will begin immediately.
+  addFlash(req, 'success', `Certificate for ${commonName} generated. Your download should begin shortly.`);
 
   // Return a ZIP with separate files
   const archiver = require('archiver');
