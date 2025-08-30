@@ -1,0 +1,25 @@
+version: '3'
+
+services:
+  devcontainer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: sleep infinity
+    network_mode: service:oidc
+    volumes:
+      - ../..:/workspaces:cached
+    env_file:
+      - .env.development
+
+  oidc:
+    image: ghcr.io/businesssimulations/dev-oidc-toolkit:latest
+    environment:
+      # Define a test user
+      - DevOidcToolkit__Users__0__Email=test@localhost
+      - DevOidcToolkit__Users__0__FirstName=Test
+      - DevOidcToolkit__Users__0__LastName=User
+      # Define a client for your Express app
+      - DevOidcToolkit__Clients__0__Id=client
+      - DevOidcToolkit__Clients__0__Secret=secret
+      - DevOidcToolkit__Clients__0__RedirectUris__0=http://localhost:3000/auth/callback
