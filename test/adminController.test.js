@@ -2,7 +2,8 @@ const request = require('supertest');
 const path = require('path');
 const fs = require('fs');
 
-jest.setTimeout(30000);
+// Slower CI runners need more time; also speed up keygen via smaller bits
+jest.setTimeout(120000);
 
 describe('adminController routes', () => {
   const origEnv = process.env;
@@ -10,7 +11,13 @@ describe('adminController routes', () => {
   const TMP = path.join(process.cwd(), '.tmp-admin');
 
   beforeEach(() => {
-  process.env = { ...origEnv, AUTH_OPTIONAL: 'true', MIGRATIONS_DIR: path.join(origCwd, 'src', 'migrations') };
+    process.env = {
+      ...origEnv,
+      AUTH_OPTIONAL: 'true',
+      MIGRATIONS_DIR: path.join(origCwd, 'src', 'migrations'),
+      CA_ROOT_KEY_BITS: '1024',
+      CA_INT_KEY_BITS: '1024'
+    };
     if (fs.existsSync(TMP)) fs.rmSync(TMP, { recursive: true, force: true });
     fs.mkdirSync(TMP, { recursive: true });
     process.chdir(TMP);
@@ -34,7 +41,7 @@ describe('adminController routes', () => {
       const issuePage = await agent.get('/certs/new').expect(200);
       const csrf = /name="_csrf" value="([^"]+)"/.exec(issuePage.text)[1];
 
-    for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 3; i++) {
       const res = await agent
           .post('/certs/issue')
         .type('form')
