@@ -27,6 +27,7 @@ const LEAF_DAYS_DEFAULT = parseInt(process.env.CA_LEAF_DAYS || '90', 10);
 
 const ROOT_KEY_BITS = parseInt(process.env.CA_ROOT_KEY_BITS || '4096', 10);
 const INT_KEY_BITS  = parseInt(process.env.CA_INT_KEY_BITS  || '3072', 10);
+const CRL_URL = (process.env.S3_CRL_PUBLIC_URL || '').trim();
 
 function ensureDirs() {
   // Keep for legacy JSON migration and DB location only; keys/certs are now in SQLite.
@@ -73,6 +74,19 @@ function subjectKeyIdentifier(pubKey) {
   const hash = forge.md.sha1.create();    // RFC7093 method 1
   hash.update(der);
   return hash.digest().getBytes();
+}
+
+function crlDistributionPointsExt() {
+  if (!CRL_URL) return null;
+  // Forge supports cRLDistributionPoints with distributionPoints -> fullName -> GeneralName[]
+  return {
+    name: 'cRLDistributionPoints',
+    distributionPoints: [
+      {
+        fullName: [ { type: 6, value: CRL_URL } ] // type 6 = uniformResourceIdentifier
+      }
+    ]
+  };
 }
 
 // ----- SQLite keystore helpers (with optional encryption) -----
@@ -291,7 +305,9 @@ exports.initCA = async ({ name, dns }) => {
     { name: 'basicConstraints', cA: true, pathLenConstraint: 0 },
     { name: 'keyUsage', keyCertSign: true, cRLSign: true },
     { name: 'subjectKeyIdentifier' },
-    { name: 'authorityKeyIdentifier', keyIdentifier: subjectKeyIdentifier(rootPub) },
+  { name: 'authorityKeyIdentifier', keyIdentifier: subjectKeyIdentifier(rootPub) },
+  // If configured, advertise CRL URL for this issuer (intermediate)
+  ...(crlDistributionPointsExt() ? [crlDistributionPointsExt()] : [])
   ]);
   intCert.sign(rootPriv, md.sha256.create());
 
@@ -354,7 +370,8 @@ exports.signCsr = async ({ csrPem, subject, sans = [], notAfterDays = LEAF_DAYS_
     { name: 'keyUsage', digitalSignature: true, keyEncipherment: true, keyAgreement: true, nonRepudiation: true },
     { name: 'extKeyUsage', serverAuth: true, clientAuth: true, emailProtection: true },
     { name: 'subjectKeyIdentifier' },
-    { name: 'authorityKeyIdentifier', keyIdentifier: subjectKeyIdentifier(ca.cert.publicKey) },
+  { name: 'authorityKeyIdentifier', keyIdentifier: subjectKeyIdentifier(ca.cert.publicKey) },
+  ...(crlDistributionPointsExt() ? [crlDistributionPointsExt()] : [])
   ];
   if (altNames.length) exts.push({ name: 'subjectAltName', altNames });
   cert.setExtensions(exts);
@@ -412,7 +429,8 @@ exports.renewWithMTLS = async ({ certPem, keyPem }) => {
     { name: 'keyUsage', digitalSignature: true, keyEncipherment: true, keyAgreement: true, nonRepudiation: true },
     { name: 'extKeyUsage', serverAuth: true, clientAuth: true, emailProtection: true },
     { name: 'subjectKeyIdentifier' },
-    { name: 'authorityKeyIdentifier', keyIdentifier: subjectKeyIdentifier(ca.cert.publicKey) },
+  { name: 'authorityKeyIdentifier', keyIdentifier: subjectKeyIdentifier(ca.cert.publicKey) },
+  ...(crlDistributionPointsExt() ? [crlDistributionPointsExt()] : [])
   ];
   if (oldSan.length) exts.push({ name: 'subjectAltName', altNames: oldSan });
   cert.setExtensions(exts);
