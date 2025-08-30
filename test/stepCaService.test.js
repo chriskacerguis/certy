@@ -96,8 +96,10 @@ describe('stepCaService keystore + issuance', () => {
     const root = await step.fetchRootPEM();
     const intm = await step.fetchIntermediatesPEM();
     // Recreate the private keys in PEM from DB by dumping directly (for test simplicity, fetch from keystore)
-    const Database = require('better-sqlite3');
-    const db = new Database(DB_PATH);
+  const Database = require('better-sqlite3');
+  // Ensure the directory for the DB exists before opening
+  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+  const db = new Database(DB_PATH);
     const rows = db.prepare('SELECT name,pem FROM keystore').all();
     const rootKeyRow = rows.find(r => r.name === 'root_key_pem');
     const intKeyRow = rows.find(r => r.name === 'intermediate_key_pem');

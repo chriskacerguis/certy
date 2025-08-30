@@ -2,7 +2,9 @@ require('dotenv').config();
 const path = require('path');
 const express = require('express');
 const helmet = require('helmet');
-const csrf = require('csurf');
+// Replaced deprecated csurf with csrf-csrf double submit pattern
+const { csrfProtection, attachCsrfToken } = require('./middleware/csrf');
+const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 const expressLayouts = require('express-ejs-layouts');
 const session = require('express-session');
@@ -34,6 +36,8 @@ app.use('/public', express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(helmet());
+// Parse cookies for CSRF token cookie handling
+app.use(cookieParser());
 
 // --- QUIETER HTTP LOGGING ---
 app.use(createHttpLogger(baseLogger));
@@ -61,8 +65,15 @@ app.use((req, res, next) => {
 const limiter = rateLimit({ windowMs: 60 * 1000, max: parseInt(process.env.RATE_LIMIT_MAX || '120', 10) });
 app.use(limiter);
 
-// CSRF: create a middleware instance (session-backed)
-const csrfProtection = csrf({ cookie: false });
+// CSRF: attach token shim and make token available in views
+app.use(attachCsrfToken);
+app.use((req, res, next) => {
+  // Only generate on safe methods to avoid rotating the cookie before POST validation
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
+    try { res.locals.csrfToken = req.csrfToken(); } catch (e) { /* ignore until protection middleware runs */ }
+  }
+  next();
+});
 
 // Simple guard for protected areas (optional: add roles)
 const AUTH_OPTIONAL = String(process.env.AUTH_OPTIONAL || 'false').toLowerCase() === 'true';
