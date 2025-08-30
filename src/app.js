@@ -118,7 +118,12 @@ app.use((err, req, res, next) => {
   res.status(status).json({ error: message });
 });
 
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  baseLogger.info(`Express running on http://localhost:${port}`);
-});
+// Export app for tests; only start server if run directly
+if (require.main === module) {
+  const port = process.env.PORT || 3000;
+  app.listen(port, () => {
+    baseLogger.info(`Express running on http://localhost:${port}`);
+  });
+}
+
+module.exports = app;

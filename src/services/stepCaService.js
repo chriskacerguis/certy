@@ -9,13 +9,13 @@ const { db, tx, getMeta, setMeta, allocateSerialHex } = require('./db');
 const { pki, md, asn1 } = forge;
 
 const CA_DIR = process.env.LOCAL_CA_DIR || path.join(process.cwd(), '.local-ca');
-const DIR_CERTS = path.join(CA_DIR, 'certs');
-const DIR_KEYS  = path.join(CA_DIR, 'private');
+const DIR_CERTS = path.join(CA_DIR, 'certs'); // legacy
+const DIR_KEYS  = path.join(CA_DIR, 'private'); // legacy
 
-const FILE_ROOT_CRT = path.join(DIR_CERTS, 'root.crt.pem');
-const FILE_INT_CRT  = path.join(DIR_CERTS, 'intermediate.crt.pem');
-const FILE_ROOT_KEY = path.join(DIR_KEYS,  'root.key.pem');
-const FILE_INT_KEY  = path.join(DIR_KEYS,  'intermediate.key.pem');
+const FILE_ROOT_CRT = path.join(DIR_CERTS, 'root.crt.pem'); // legacy
+const FILE_INT_CRT  = path.join(DIR_CERTS, 'intermediate.crt.pem'); // legacy
+const FILE_ROOT_KEY = path.join(DIR_KEYS,  'root.key.pem'); // legacy
+const FILE_INT_KEY  = path.join(DIR_KEYS,  'intermediate.key.pem'); // legacy
 
 // Old JSON files (for one-time migration if present)
 const FILE_SERIAL_OLD = path.join(CA_DIR, 'serial.json');
@@ -29,10 +29,12 @@ const ROOT_KEY_BITS = parseInt(process.env.CA_ROOT_KEY_BITS || '4096', 10);
 const INT_KEY_BITS  = parseInt(process.env.CA_INT_KEY_BITS  || '3072', 10);
 
 function ensureDirs() {
+  // Keep for legacy JSON migration and DB location only; keys/certs are now in SQLite.
   [CA_DIR, DIR_CERTS, DIR_KEYS].forEach(d => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true, mode: 0o700 }); });
 }
 
 function readIfExists(file) { return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null; }
+// New storage is SQLite; keep writePEM only for legacy migration paths.
 function writePEM(file, pem) { fs.writeFileSync(file, pem, { mode: 0o600 }); }
 
 function expose(status, message) { const e = new Error(message); e.status = status; e.expose = true; return e; }
@@ -73,18 +75,61 @@ function subjectKeyIdentifier(pubKey) {
   return hash.digest().getBytes();
 }
 
+// ----- SQLite keystore helpers (with optional encryption) -----
+function deriveKey() {
+  const secret = process.env.KEYSTORE_SECRET || '';
+  if (!secret || secret.length < 8) return null; // disabled or too weak
+  return crypto.createHash('sha256').update(secret, 'utf8').digest();
+}
+function encMaybe(pem) {
+  const key = deriveKey();
+  if (!key) return pem;
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  const enc = Buffer.concat([cipher.update(pem, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  const payload = Buffer.concat([iv, tag, enc]).toString('base64');
+  return 'ENCv1:' + payload;
+}
+function decMaybe(str) {
+  if (!str) return null;
+  if (!str.startsWith('ENCv1:')) return str;
+  const key = deriveKey();
+  if (!key) {
+    const e = new Error('Encrypted keystore requires KEYSTORE_SECRET');
+    e.status = 500; e.expose = false; throw e;
+  }
+  const raw = Buffer.from(str.slice(6), 'base64');
+  const iv = raw.subarray(0, 12);
+  const tag = raw.subarray(12, 28);
+  const enc = raw.subarray(28);
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+  decipher.setAuthTag(tag);
+  const dec = Buffer.concat([decipher.update(enc), decipher.final()]);
+  return dec.toString('utf8');
+}
+function getPem(name) {
+  const row = db.prepare('SELECT pem FROM keystore WHERE name=?').get(name);
+  return row ? decMaybe(row.pem) : null;
+}
+function setPem(name, pem) {
+  const val = encMaybe(pem);
+  db.prepare(`INSERT INTO keystore(name, pem) VALUES(?, ?) ON CONFLICT(name) DO UPDATE SET pem=excluded.pem`).run(name, val);
+}
+
 function loadRoot() {
-  const crt = readIfExists(FILE_ROOT_CRT);
-  const key = readIfExists(FILE_ROOT_KEY);
-  if (!crt || !key) return null;
-  return { cert: pki.certificateFromPem(crt), key: pki.privateKeyFromPem(key), pem: crt };
+  // Prefer DB; fallback to legacy files (one-time migration handled elsewhere)
+  const certPem = getPem('root_cert_pem');
+  const keyPem  = getPem('root_key_pem');
+  if (!certPem || !keyPem) return null;
+  return { cert: pki.certificateFromPem(certPem), key: pki.privateKeyFromPem(keyPem), pem: certPem };
 }
 
 function loadIntermediate() {
-  const crt = readIfExists(FILE_INT_CRT);
-  const key = readIfExists(FILE_INT_KEY);
-  if (!crt || !key) return null;
-  return { cert: pki.certificateFromPem(crt), key: pki.privateKeyFromPem(key), pem: crt };
+  const certPem = getPem('intermediate_cert_pem');
+  const keyPem  = getPem('intermediate_key_pem');
+  if (!certPem || !keyPem) return null;
+  return { cert: pki.certificateFromPem(certPem), key: pki.privateKeyFromPem(keyPem), pem: certPem };
 }
 
 function parseSubjectCN(certOrAttrs) {
@@ -148,22 +193,56 @@ async function migrateFromJsonIfPresent() {
   }
 }
 
+async function migratePemFilesToDBIfPresent() {
+  try {
+    // If keystore already populated, skip.
+    const hasRoot = !!getPem('root_cert_pem') && !!getPem('root_key_pem');
+    const hasInt  = !!getPem('intermediate_cert_pem') && !!getPem('intermediate_key_pem');
+    if (hasRoot && hasInt) return;
+
+    const legacyRootCrt = readIfExists(FILE_ROOT_CRT);
+    const legacyRootKey = readIfExists(FILE_ROOT_KEY);
+    const legacyIntCrt  = readIfExists(FILE_INT_CRT);
+    const legacyIntKey  = readIfExists(FILE_INT_KEY);
+
+    if (legacyRootCrt && legacyRootKey) {
+      tx(() => {
+        setPem('root_cert_pem', legacyRootCrt);
+        setPem('root_key_pem', legacyRootKey);
+      });
+    }
+    if (legacyIntCrt && legacyIntKey) {
+      tx(() => {
+        setPem('intermediate_cert_pem', legacyIntCrt);
+        setPem('intermediate_key_pem', legacyIntKey);
+      });
+    }
+  } catch {
+    // ignore
+  }
+}
+
 // ------------------ Public API (unchanged signatures) ------------------
 
 exports.isInitialized = async () => {
   ensureDirs();
   await migrateFromJsonIfPresent();
-  return fs.existsSync(FILE_ROOT_CRT) && fs.existsSync(FILE_INT_CRT) && fs.existsSync(FILE_ROOT_KEY) && fs.existsSync(FILE_INT_KEY);
+  await migratePemFilesToDBIfPresent();
+  const rootCert = getPem('root_cert_pem');
+  const rootKey  = getPem('root_key_pem');
+  const intCert  = getPem('intermediate_cert_pem');
+  const intKey   = getPem('intermediate_key_pem');
+  return !!(rootCert && rootKey && intCert && intKey);
 };
 
 exports.fetchRootPEM = async () => {
-  const pem = readIfExists(FILE_ROOT_CRT);
+  const pem = getPem('root_cert_pem');
   if (!pem) throw expose(404, 'Root certificate not found');
   return pem;
 };
 
 exports.fetchIntermediatesPEM = async () => {
-  const pem = readIfExists(FILE_INT_CRT);
+  const pem = getPem('intermediate_cert_pem');
   if (!pem) throw expose(404, 'Intermediate certificate not found');
   return pem;
 };
@@ -216,11 +295,13 @@ exports.initCA = async ({ name, dns }) => {
   ]);
   intCert.sign(rootPriv, md.sha256.create());
 
-  // Persist
-  writePEM(FILE_ROOT_KEY, pki.privateKeyToPem(rootPriv));
-  writePEM(FILE_ROOT_CRT, pki.certificateToPem(rootCert));
-  writePEM(FILE_INT_KEY,  pki.privateKeyToPem(intPriv));
-  writePEM(FILE_INT_CRT,  pki.certificateToPem(intCert));
+  // Persist to SQLite keystore
+  tx(() => {
+    setPem('root_key_pem', pki.privateKeyToPem(rootPriv));
+    setPem('root_cert_pem', pki.certificateToPem(rootCert));
+    setPem('intermediate_key_pem', pki.privateKeyToPem(intPriv));
+    setPem('intermediate_cert_pem', pki.certificateToPem(intCert));
+  });
 
   // Seed serial counter in DB
   if (!getMeta('next_serial')) setMeta('next_serial', '1000');
@@ -229,7 +310,12 @@ exports.initCA = async ({ name, dns }) => {
 };
 
 exports.destroyCA = async () => {
+  // Dangerous: original behavior removed the entire CA_DIR (including DB). Keep same semantics.
   if (fs.existsSync(CA_DIR)) fs.rmSync(CA_DIR, { recursive: true, force: true });
+  // Additionally, clear keystore in case DB path was moved elsewhere.
+  try {
+    db.exec('DELETE FROM keystore');
+  } catch {/* ignore */}
 };
 
 // Sign CSR into a leaf certificate
@@ -301,10 +387,11 @@ exports.renewWithMTLS = async ({ certPem, keyPem }) => {
   const old = pki.certificateFromPem(certPem);
   const priv = pki.privateKeyFromPem(keyPem);
 
-  // key ownership check
-  const test = md.sha256.create(); test.update('prove-key');
+  // key ownership check: sign a digest and verify against cert public key
+  const test = md.sha256.create(); test.update('prove-key', 'utf8');
   const sig = priv.sign(test);
-  if (!old.publicKey.verify('prove-key', sig)) throw expose(400, 'Provided private key does not match certificate');
+  const digestBytes = md.sha256.create(); digestBytes.update('prove-key', 'utf8');
+  if (!old.publicKey.verify(digestBytes.digest().bytes(), sig)) throw expose(400, 'Provided private key does not match certificate');
 
   // revoked?
   const r = db.prepare('SELECT 1 FROM revocations WHERE serial_hex=?').get(old.serialNumber);
@@ -354,9 +441,10 @@ exports.renewWithMTLS = async ({ certPem, keyPem }) => {
 exports.revokeWithMTLS = async ({ certPem, keyPem, reason = '' }) => {
   const cert = pki.certificateFromPem(certPem);
   const priv = pki.privateKeyFromPem(keyPem);
-  const test = md.sha256.create(); test.update('prove-revoke');
+  const test = md.sha256.create(); test.update('prove-revoke', 'utf8');
   const sig = priv.sign(test);
-  if (!cert.publicKey.verify('prove-revoke', sig)) throw expose(400, 'Private key does not match certificate');
+  const digestBytes = md.sha256.create(); digestBytes.update('prove-revoke', 'utf8');
+  if (!cert.publicKey.verify(digestBytes.digest().bytes(), sig)) throw expose(400, 'Private key does not match certificate');
 
   tx(() => {
     db.prepare(`

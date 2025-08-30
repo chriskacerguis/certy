@@ -22,14 +22,17 @@ exports.issueCertificate = async (req, res, next) => {
         .render('layout', { body: `<div class="alert alert-danger">${errors.array()[0].msg}</div>` });
     }
 
-    const { commonName, sans = '', days = 90, keyType = 'EC' } = req.body;
+  let { commonName, sans = '', days = 90, keyType = 'RSA' } = req.body;
+  // Coerce unsupported/EC key types to RSA for compatibility with current CSR flow
+  keyType = String(keyType || 'RSA').toUpperCase();
+  if (keyType !== 'RSA') keyType = 'RSA';
     const sanArr = sans.split(',').map(s => s.trim()).filter(Boolean);
 
     const { privateKeyPem, csrPem } = await generateKeyAndCsr({
       commonName,
       emails: [],
       dns: sanArr,
-      keyType,
+  keyType,
     });
 
     const certPem = await step.signCsr({
@@ -38,27 +41,23 @@ exports.issueCertificate = async (req, res, next) => {
       sans: sanArr,
       notAfterDays: Number(days),
     });
-    const bundle = [certPem, await step.fetchIntermediatesPEM()].join('\n');
+  const intermediatePem = await step.fetchIntermediatesPEM();
 
     audit.event('ISSUE_CERT', { cn: commonName, sans: sanArr, days: Number(days) });
 
-    // Return multi-part with key/csr/cert/chain
-    const boundary = 'BOUNDARY' + Date.now();
-    res.setHeader('Content-Type', `multipart/mixed; boundary=${boundary}`);
-    res.setHeader('Content-Disposition', 'attachment; filename="cert_bundle.txt"');
-    res.write(
-      `--${boundary}\r\nContent-Type: application/x-pem-file\r\nContent-Disposition: attachment; filename=private.key\r\n\r\n${privateKeyPem}\r\n`
-    );
-    res.write(
-      `--${boundary}\r\nContent-Type: application/x-pem-file\r\nContent-Disposition: attachment; filename=request.csr\r\n\r\n${csrPem}\r\n`
-    );
-    res.write(
-      `--${boundary}\r\nContent-Type: application/x-pem-file\r\nContent-Disposition: attachment; filename=certificate.pem\r\n\r\n${certPem}\r\n`
-    );
-    res.write(
-      `--${boundary}\r\nContent-Type: application/x-pem-file\r\nContent-Disposition: attachment; filename=chain.pem\r\n\r\n${bundle}\r\n`
-    );
-    res.end(`--${boundary}--`);
+  // Return a ZIP with separate files
+  const archiver = require('archiver');
+  res.setHeader('Content-Type', 'application/zip');
+  const safeCN = String(commonName || 'certificate').replace(/[^a-zA-Z0-9_.-]+/g, '_');
+  res.setHeader('Content-Disposition', `attachment; filename="${safeCN}.zip"`);
+  const archive = archiver('zip', { zlib: { level: 9 } });
+  archive.on('error', err => { throw err; });
+  archive.pipe(res);
+  archive.append(privateKeyPem, { name: 'private.key' });
+  archive.append(csrPem, { name: 'request.csr' });
+  archive.append(certPem, { name: 'certificate.pem' });
+  archive.append(`${certPem.trim()}\n${intermediatePem.trim()}\n`, { name: 'chain.pem' });
+  archive.finalize();
   } catch (e) { next(e); }
 };
 
