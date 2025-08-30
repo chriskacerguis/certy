@@ -140,5 +140,11 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
+# just .tmp
+.tmp-*/
+
 # app specific
 .local-ca/
+
+# ignore .vscode
+.vscode/
