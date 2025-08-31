@@ -13,9 +13,9 @@ const ALLOWED_SORT = {
 exports.listAudit = (req, res, next) => {
   try {
     const q = String(req.query.q || '').trim();
-  const type = String(req.query.type || '').trim();
-  const userQ = String(req.query.user || '').trim();
-  const ip = String(req.query.ip || '').trim();
+    const type = String(req.query.type || '').trim();
+    const userQ = String(req.query.user || '').trim();
+    const ip = String(req.query.ip || '').trim();
     const page = Math.max(1, parseInt(req.query.page || '1', 10));
     const pageSize = Math.min(100, Math.max(5, parseInt(req.query.pageSize || '20', 10)));
 
@@ -80,7 +80,7 @@ exports.listAudit = (req, res, next) => {
       q,
       qEnc: encodeURIComponent(q),
       type,
-  userQ,
+      userQ,
       ip,
       sortBy,
       sortDir,
