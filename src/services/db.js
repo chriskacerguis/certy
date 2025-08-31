@@ -119,4 +119,4 @@ function allocateSerialHex() {
   });
 }
 
-module.exports = { db, tx, getMeta, setMeta, allocateSerialHex, DB_PATH };
+module.exports = { db, tx, getMeta, setMeta, allocateSerialHex, DB_PATH, CA_DIR };

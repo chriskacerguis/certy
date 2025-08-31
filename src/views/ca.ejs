@@ -2,6 +2,15 @@
 
 <% const initialized = (typeof isInitialized !== 'undefined' && isInitialized); %>
 
+<div class="small text-muted mb-3">
+  <div>CA Dir: <code><%= typeof caDir !== 'undefined' ? caDir : '' %></code></div>
+  <div>DB Path: <code><%= typeof dbPath !== 'undefined' ? dbPath : '' %></code></div>
+  <div>Legacy JSON Migration: <code><%= (typeof migrateJson !== 'undefined' ? migrateJson : 'false') %></code></div>
+  <% if ((typeof migrateJson !== 'undefined' ? migrateJson : 'false') !== 'true') { %>
+    <div>Note: Legacy JSON will not be imported unless MIGRATE_JSON=true.</div>
+  <% } %>
+  </div>
+
 <% if (typeof lifecycleEnabled !== 'undefined' && lifecycleEnabled) { %>
   <div class="row g-4 align-items-stretch">
     <div class="col-md-6">

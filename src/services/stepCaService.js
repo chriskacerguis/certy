@@ -11,9 +11,7 @@ const { pki, md, asn1 } = forge;
 const CA_DIR = process.env.LOCAL_CA_DIR || path.join(process.cwd(), '.local-ca');
 // legacy filesystem paths removed; keystore is SQLite-only
 
-// Old JSON files (for one-time migration if present)
-const FILE_SERIAL_OLD = path.join(CA_DIR, 'serial.json');
-const FILE_INDEX_OLD  = path.join(CA_DIR, 'index.json');
+// Legacy JSON migration removed; keystore is SQLite-only
 
 const ROOT_DAYS = parseInt(process.env.CA_ROOT_DAYS || '3650', 10);
 const INT_DAYS  = parseInt(process.env.CA_INT_DAYS  || '1825', 10);
@@ -151,59 +149,12 @@ function sansToJson(altNames) {
   });
 }
 
-async function migrateFromJsonIfPresent() {
-  try {
-    if (getMeta('migrated_json') === '1') return;
-    const hasOldSerial = fs.existsSync(FILE_SERIAL_OLD);
-    const hasOldIndex  = fs.existsSync(FILE_INDEX_OLD);
-    if (!hasOldSerial && !hasOldIndex) return;
-
-    tx(() => {
-      if (hasOldSerial) {
-        const { next } = JSON.parse(fs.readFileSync(FILE_SERIAL_OLD, 'utf8'));
-        if (next) setMeta('next_serial', String(next));
-      } else if (!getMeta('next_serial')) {
-        setMeta('next_serial', '1000');
-      }
-
-      if (hasOldIndex) {
-        const arr = JSON.parse(fs.readFileSync(FILE_INDEX_OLD, 'utf8'));
-        for (const e of arr) {
-          if (e.serialHex) {
-            db.prepare(`
-              INSERT OR IGNORE INTO certs(serial_hex, subject_cn, subject, sans_json, not_before, not_after, renewed_from)
-              VALUES (?, ?, ?, ?, ?, ?, ?)
-            `).run(
-              e.serialHex,
-              (e.subject || '').split(',').find(s => s.startsWith('CN='))?.slice(3) || null,
-              e.subject || null,
-              JSON.stringify([]),
-              e.notBefore || null,
-              e.notAfter || null,
-              e.renewedFrom || null
-            );
-          }
-          if (e.serialHex && e.revokedAt) {
-            db.prepare(`
-              INSERT OR IGNORE INTO revocations(serial_hex, reason, revoked_at) VALUES (?, ?, ?)
-            `).run(e.serialHex, e.reason || '', e.revokedAt);
-          }
-        }
-      }
-      setMeta('migrated_json', '1');
-    });
-  } catch (e) {
-    // non-fatal; continue
-  }
-}
-
-// Legacy PEM migration removed; only JSON index migration remains for historical records
+// Legacy migrations removed
 
 // ------------------ Public API (unchanged signatures) ------------------
 
 exports.isInitialized = async () => {
   ensureDirs();
-  await migrateFromJsonIfPresent();
   const rootCert = getPem('root_cert_pem');
   const rootKey  = getPem('root_key_pem');
   const intCert  = getPem('intermediate_cert_pem');
@@ -226,6 +177,7 @@ exports.fetchIntermediatesPEM = async () => {
 exports.initCA = async ({ name, dns }) => {
   ensureDirs();
   if (await exports.isInitialized()) throw expose(409, 'CA is already initialized');
+  // No legacy migrations
 
   // Root
   const rootKp = nodeKeyPairToPEM('RSA', ROOT_KEY_BITS);
@@ -298,6 +250,8 @@ exports.destroyCA = async () => {
         if (t === 'schema_migrations') continue; // preserve applied migration history
         db.exec(`DELETE FROM ${t};`);
       }
+  // Clear serial seed for a clean start
+  try { db.exec(`DELETE FROM meta WHERE key IN ('next_serial')`); } catch (_) { /* ignore */ }
       // Reset AUTOINCREMENT counters if present
       try { db.exec('DELETE FROM sqlite_sequence;'); } catch (_) { /* noop if not exists */ }
     });

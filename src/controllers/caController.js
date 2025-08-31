@@ -9,7 +9,8 @@ exports.renderPage = async (req, res, next) => {
     const lifecycleEnabled = String(process.env.ENABLE_CA_LIFECYCLE || '').toLowerCase() === 'true';
     const s3Enabled = crlPublisher.isEnabled();
     const s3PublicUrl = s3Enabled ? crlPublisher.derivePublicUrl() : '';
-    res.render('ca', { csrfToken: req.csrfToken(), isInitialized, lifecycleEnabled, s3Enabled, s3PublicUrl });
+  const { DB_PATH, CA_DIR } = require('../services/db');
+  res.render('ca', { csrfToken: req.csrfToken(), isInitialized, lifecycleEnabled, s3Enabled, s3PublicUrl, dbPath: DB_PATH, caDir: CA_DIR, migrateJson: String(process.env.MIGRATE_JSON||'false') });
   } catch (e) {
     next(e);
   }

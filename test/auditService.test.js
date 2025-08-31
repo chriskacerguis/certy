@@ -16,8 +16,10 @@ describe('auditService', () => {
     process.chdir(origCwd);
   });
 
-  test('redacts sensitive fields', async () => {
+  test('redacts sensitive fields and persists to DB', async () => {
+    process.env.NODE_ENV = 'test';
     const audit = require('../src/services/auditService');
+    const { db } = require('../src/services/db');
     audit.event('TEST', {
       password: 'secret',
       privateKeyPem: 'PEM',
@@ -26,22 +28,16 @@ describe('auditService', () => {
       csrPem: 'REQ',
       keep: 'ok'
     });
-    const logPath = path.join(TMP, 'logs', 'audit.log');
-    // wait briefly for pino to flush to disk
-    for (let i = 0; i < 10; i++) {
-      if (fs.existsSync(logPath) && fs.statSync(logPath).size > 0) break;
-      await new Promise(r => setTimeout(r, 20));
-    }
-    expect(fs.existsSync(logPath)).toBe(true);
-    const lines = fs.readFileSync(logPath, 'utf8').trim().split(/\r?\n/);
-    const last = lines.pop();
-    const obj = JSON.parse(last);
-    expect(obj.type).toBe('TEST');
+    // Read back the last audit row
+    const row = db.prepare('SELECT * FROM audit_logs ORDER BY id DESC LIMIT 1').get();
+    expect(row).toBeTruthy();
+    const obj = JSON.parse(row.details_json);
     expect(obj.password).toBe('[REDACTED]');
     expect(obj.privateKeyPem).toBe('[REDACTED]');
     expect(obj.keyPem).toBe('[REDACTED]');
     expect(obj.csr).toBe('[REDACTED]');
     expect(obj.csrPem).toBe('[REDACTED]');
     expect(obj.keep).toBe('ok');
+    expect(row.type).toBe('TEST');
   });
 });
