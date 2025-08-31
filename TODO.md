@@ -14,7 +14,7 @@
 
 ## Ops and reliability
 
-- [ ] Backup/restore guide with exact files and minimal downtime steps
+- [x] Backup/restore guide with exact files and minimal downtime steps
 - [ ] CLI/admin script for headless keystore rotation and CA destroy (even if ENABLE_CA_LIFECYCLE=false)
 - [ ] CRL publish: retry/backoff and “last published” status in UI
 
