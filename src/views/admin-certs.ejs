@@ -57,7 +57,7 @@
     </thead>
     <tbody>
       <% if (!rows.length) { %>
-        <tr><td colspan="6" class="text-center text-muted py-4">No certificates found.</td></tr>
+        <tr><td colspan="7" class="text-center text-muted py-4">No certificates found.</td></tr>
       <% } %>
       <% rows.forEach(r => { 
            const sans = r.sans_json ? JSON.parse(r.sans_json) : [];
