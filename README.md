@@ -4,6 +4,13 @@ Easy to use Web Based CA with SMIME and ACME support.  This is primarily for hom
 
 The code, however, has not been audited and there may be some security issues.
 
+## Homelab Quick Start
+
+If you are running this in a homelab and aren't worried too much about security, you can quick start by:
+
+- Run `cp .env.example .env`
+- Run `docker compose up -d`
+
 ## Storage and backups
 
 All CA data is stored in a single SQLite database at `.local-ca/ca.db` by default (configurable via `LOCAL_CA_DB`).
