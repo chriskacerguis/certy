@@ -4,7 +4,7 @@ const path = require('path');
 const crypto = require('node:crypto');
 const forge = require('node-forge');
 const net = require('node:net');
-const { db, tx, getMeta, setMeta, allocateSerialHex } = require('./db');
+const { db, tx, getMeta, setMeta, allocateSerialHex, DB_PATH } = require('./db');
 
 const { pki, md, asn1 } = forge;
 
@@ -288,12 +288,38 @@ exports.initCA = async ({ name, dns }) => {
 };
 
 exports.destroyCA = async () => {
-  // Dangerous: original behavior removed the entire CA_DIR (including DB). Keep same semantics.
-  if (fs.existsSync(CA_DIR)) fs.rmSync(CA_DIR, { recursive: true, force: true });
-  // Additionally, clear keystore in case DB path was moved elsewhere.
+  // Truncate all application tables in the SQLite DB (keep schema_migrations to avoid reapplying ALTERs)
   try {
-    db.exec('DELETE FROM keystore');
-  } catch {/* ignore */}
+    try { db.pragma('foreign_keys = OFF'); } catch (_) { /* ignore */ }
+    tx(() => {
+      const rows = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all();
+      const tables = rows.map(r => r.name);
+      for (const t of tables) {
+        if (t === 'schema_migrations') continue; // preserve applied migration history
+        db.exec(`DELETE FROM ${t};`);
+      }
+      // Reset AUTOINCREMENT counters if present
+      try { db.exec('DELETE FROM sqlite_sequence;'); } catch (_) { /* noop if not exists */ }
+    });
+  } catch (_) { /* swallow to ensure controller response */ }
+  finally {
+    try { db.pragma('foreign_keys = ON'); } catch (_) { /* ignore */ }
+  }
+
+  // Clean the local CA directory (logs, artifacts) but preserve the DB file if it lives inside CA_DIR
+  try {
+    if (fs.existsSync(CA_DIR)) {
+      const caDir = path.resolve(CA_DIR);
+      const dbPath = path.resolve(DB_PATH || '');
+      const entries = fs.readdirSync(caDir);
+      for (const name of entries) {
+        const p = path.join(caDir, name);
+        // Skip the DB file if it's under CA_DIR
+        if (dbPath && path.resolve(p) === dbPath) continue;
+        fs.rmSync(p, { recursive: true, force: true });
+      }
+    }
+  } catch (_) { /* ignore */ }
 };
 
 // Sign CSR into a leaf certificate

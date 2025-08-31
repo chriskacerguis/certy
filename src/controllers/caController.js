@@ -53,7 +53,7 @@ exports.destroyCA = async (req, res, next) => {
     }
     await step.destroyCA();
     audit.event('CA_DESTROY', {});
-    res.render('layout', { body: '<div class="alert alert-warning">CA data directory removed.</div>' });
+  res.render('layout', { body: '<div class="alert alert-warning">CA data wiped (database tables cleared and local CA directory removed).</div>' });
   } catch (e) { next(e); }
 };
 
