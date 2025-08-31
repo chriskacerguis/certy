@@ -74,30 +74,45 @@
 <div class="row g-4">
   <div class="col-md-4">
     <div class="card shadow-sm h-100">
-      <div class="card-body">
+      <div class="card-body d-flex flex-column">
         <h5 class="card-title">Download Root Certificates</h5>
-        <a class="btn btn-outline-primary <%= initialized ? '' : 'disabled' %>"
-           href="<%= initialized ? '/ca/download/root' : '#' %>"
-           aria-disabled="<%= !initialized %>">roots.pem</a>
+  <p class="text-muted">PEM bundle of all root CAs. Import into your OS or browser trust store to anchor the chain.</p>
+        <div class="mt-auto">
+          <a class="btn btn-outline-primary <%= initialized ? '' : 'disabled' %>"
+             href="<%= initialized ? '/ca/download/root' : '#' %>"
+             aria-disabled="<%= !initialized %>">roots.pem</a>
+        </div>
       </div>
     </div>
   </div>
   <div class="col-md-4">
     <div class="card shadow-sm h-100">
-      <div class="card-body">
+      <div class="card-body d-flex flex-column">
         <h5 class="card-title">Download Intermediate Certificates</h5>
-        <a class="btn btn-outline-primary <%= initialized ? '' : 'disabled' %>"
-           href="<%= initialized ? '/ca/download/intermediate' : '#' %>"
-           aria-disabled="<%= !initialized %>">intermediates.pem</a>
+  <p class="text-muted">PEM bundle of all intermediate CAs. Provide alongside leaf certificates for complete chains.</p>
+        <div class="mt-auto">
+          <a class="btn btn-outline-primary <%= initialized ? '' : 'disabled' %>"
+             href="<%= initialized ? '/ca/download/intermediate' : '#' %>"
+             aria-disabled="<%= !initialized %>">intermediates.pem</a>
+        </div>
       </div>
     </div>
   </div>
   <div class="col-md-4">
     <div class="card shadow-sm h-100">
-      <div class="card-body">
+      <div class="card-body d-flex flex-column">
         <h5 class="card-title">Certificate Revocation List (CRL)</h5>
         <p class="text-muted">Signed by the Intermediate CA. Generated on demand.</p>
-        <div class="d-flex gap-2">
+        <% if (typeof s3Enabled !== 'undefined' && s3Enabled) { %>
+          <div class="small text-muted mb-3">
+            <% if (typeof s3PublicUrl !== 'undefined' && s3PublicUrl) { %>
+              Public URL: <a href="<%= s3PublicUrl %>" target="_blank" rel="noopener"><%= s3PublicUrl %></a>
+            <% } else { %>
+              S3 publishing is enabled. Configure <code>S3_CRL_PUBLIC_URL</code> for a fixed public link (optional).
+            <% } %>
+          </div>
+        <% } %>
+        <div class="mt-auto d-flex gap-2">
           <a class="btn btn-outline-secondary <%= initialized ? '' : 'disabled' %>"
              href="<%= initialized ? '/ca/download/crl' : '#' %>"
              aria-disabled="<%= !initialized %>">Download CRL (PEM)</a>
@@ -111,15 +126,6 @@
             </form>
           <% } %>
         </div>
-        <% if (typeof s3Enabled !== 'undefined' && s3Enabled) { %>
-          <div class="small text-muted mt-2">
-            <% if (typeof s3PublicUrl !== 'undefined' && s3PublicUrl) { %>
-              Public URL: <a href="<%= s3PublicUrl %>" target="_blank" rel="noopener"><%= s3PublicUrl %></a>
-            <% } else { %>
-              S3 publishing is enabled. Configure <code>S3_CRL_PUBLIC_URL</code> for a fixed public link (optional).
-            <% } %>
-          </div>
-        <% } %>
       </div>
     </div>
   </div>
