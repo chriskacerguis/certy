@@ -343,15 +343,16 @@ exports.signCsr = async ({ csrPem, subject, sans = [], notAfterDays = LEAF_DAYS_
   // Record in DB
   tx(() => {
     db.prepare(`
-      INSERT INTO certs(serial_hex, subject_cn, subject, sans_json, not_before, not_after, renewed_from)
-      VALUES (?, ?, ?, ?, ?, ?, NULL)
+  INSERT INTO certs(serial_hex, subject_cn, subject, sans_json, not_before, not_after, renewed_from, cert_pem)
+  VALUES (?, ?, ?, ?, ?, ?, NULL, ?)
     `).run(
       cert.serialNumber,
       parseSubjectCN(cert),
       cert.subject.attributes.map(a=>`${a.shortName || a.name}=${a.value}`).join(','),
       JSON.stringify(sansToJson(altNames)),
-      cert.validity.notBefore.toISOString(),
-      cert.validity.notAfter.toISOString()
+  cert.validity.notBefore.toISOString(),
+  cert.validity.notAfter.toISOString(),
+  pki.certificateToPem(cert)
     );
   });
 
@@ -401,16 +402,17 @@ exports.renewWithMTLS = async ({ certPem, keyPem }) => {
 
   tx(() => {
     db.prepare(`
-      INSERT INTO certs(serial_hex, subject_cn, subject, sans_json, not_before, not_after, renewed_from)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO certs(serial_hex, subject_cn, subject, sans_json, not_before, not_after, renewed_from, cert_pem)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       cert.serialNumber,
       parseSubjectCN(cert),
       cert.subject.attributes.map(a=>`${a.shortName || a.name}=${a.value}`).join(','),
       JSON.stringify(sansToJson(oldSan)),
       cert.validity.notBefore.toISOString(),
-      cert.validity.notAfter.toISOString(),
-      old.serialNumber
+  cert.validity.notAfter.toISOString(),
+  old.serialNumber,
+  pki.certificateToPem(cert)
     );
   });
 

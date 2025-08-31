@@ -52,6 +52,7 @@
         <th>Not After</th>
         <th>SANs</th>
         <th>Revoked</th>
+        <th>Actions</th>
       </tr>
     </thead>
     <tbody>
@@ -71,10 +72,24 @@
           <td>
             <% if (r.revoked_at) { %>
               <span class="badge bg-danger">Yes</span>
+            <% } else { %>
+              <span class="badge bg-success">No</span>
+            <% } %>
+          </td>
+          <td>
+            <% if (r.revoked_at) { %>
               <div class="small text-muted"><%= r.reason || '' %></div>
               <div class="small text-muted"><%= (r.revoked_at || '').replace('T',' ').replace('Z','') %></div>
             <% } else { %>
-              <span class="badge bg-success">No</span>
+              <div class="d-flex gap-2 flex-wrap">
+                <form class="d-inline" data-action="revoke" method="post" action="/certs/revoke">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <input type="hidden" name="serial" value="<%= r.serial_hex %>">
+                  <button type="submit" class="btn btn-sm btn-outline-danger">Revoke</button>
+                </form>
+                <a class="btn btn-sm btn-outline-secondary" href="/certs/renew?serial=<%= encodeURIComponent(r.serial_hex) %>">Renew</a>
+                <a class="btn btn-sm btn-outline-primary" href="/certs/by-serial/<%= encodeURIComponent(r.serial_hex) %>.pem">Download Cert</a>
+              </div>
             <% } %>
           </td>
         </tr>

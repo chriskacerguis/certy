@@ -1,5 +1,5 @@
 const express = require('express');
-const { body } = require('express-validator');
+const { body, oneOf } = require('express-validator');
 const controller = require('../controllers/certController');
 
 const router = express.Router();
@@ -43,12 +43,20 @@ router.get('/revoke', controller.renderRevokePage);
 router.post(
   '/revoke',
   [
-    body('certPem').isString().contains('BEGIN CERTIFICATE'),
+    oneOf([
+      body('certPem').isString().contains('BEGIN CERTIFICATE'),
+      body('serial').isString().trim().isLength({ min: 1 })
+    ], 'Provide either certPem or serial'),
     body('keyPem').optional().isString(),
     body('reason').optional().isString().isLength({ max: 200 }),
     body('reasonCode').optional().isInt({ min: 0, max: 10 }),
   ],
   controller.revokeCertificate
 );
+
+// Helpers: fetch/download certificate PEM by serial (no CSRF for GET)
+router.get('/by-serial/:serial.json', controller.getCertificateBySerial);
+router.get('/by-serial/:serial.pem', controller.downloadCertificateBySerial);
+router.get('/list.json', controller.listIssuedJson);
 
 module.exports = router;

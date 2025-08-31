@@ -6,11 +6,118 @@ const { extractSerialDecimal } = require('../utils/x509');
 const audit = require('../services/auditService');
 const mail = require('../services/mailService');
 const { addFlash } = require('../middleware/flash');
+const { db } = require('../services/db');
+
+const ALLOWED_SORT = {
+  serial_hex: 'c.serial_hex',
+  subject_cn: 'c.subject_cn',
+  not_before: 'c.not_before',
+  not_after: 'c.not_after',
+  renewed_from: 'c.renewed_from',
+  revoked_at: 'r.revoked_at'
+};
 
 // ----- TLS issuance -----
 exports.renderIssuePage = async (req, res, next) => {
   try {
-    res.render('cert', { csrfToken: req.csrfToken() });
+    // Listing params (search/sort/pagination)
+    const q = String(req.query.q || '').trim();
+    const page = Math.max(1, parseInt(req.query.page || '1', 10));
+    const pageSize = Math.min(100, Math.max(5, parseInt(req.query.pageSize || '10', 10)));
+
+    const sortByReq = String(req.query.sortBy || 'not_after');
+    const sortBy = ALLOWED_SORT[sortByReq] ? sortByReq : 'not_after';
+    const sortDir = String(req.query.sortDir || 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
+    const order = `${ALLOWED_SORT[sortBy]} ${sortDir.toUpperCase()}`;
+
+    const like = `%${q}%`;
+    const where = q
+      ? `WHERE c.serial_hex LIKE @like
+         OR c.subject_cn LIKE @like
+         OR c.subject LIKE @like
+         OR c.sans_json LIKE @like
+         OR IFNULL(r.reason,'') LIKE @like`
+      : '';
+
+    const countRow = db.prepare(
+      `SELECT COUNT(*) AS cnt
+       FROM certs c
+       LEFT JOIN revocations r ON r.serial_hex = c.serial_hex
+       ${where}`
+    ).get({ like });
+
+    const total = countRow?.cnt || 0;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const curPage = Math.min(page, totalPages);
+    const offset = (curPage - 1) * pageSize;
+
+    const rows = db.prepare(
+      `SELECT c.serial_hex, c.subject_cn, c.subject, c.sans_json,
+              c.not_before, c.not_after, c.renewed_from,
+              r.revoked_at, r.reason
+       FROM certs c
+       LEFT JOIN revocations r ON r.serial_hex = c.serial_hex
+       ${where}
+       ORDER BY ${order}
+       LIMIT @limit OFFSET @offset`
+    ).all({ like, limit: pageSize, offset });
+
+    const pages = [];
+    const win = 3;
+    const start = Math.max(1, curPage - win);
+    const end = Math.min(totalPages, curPage + win);
+    for (let i = start; i <= end; i++) pages.push(i);
+
+    res.render('cert', {
+      csrfToken: res.locals.csrfToken,
+      rows,
+      total,
+      totalPages,
+      page: curPage,
+      pageSize,
+      pages,
+      q,
+      qEnc: encodeURIComponent(q),
+      sortBy,
+      sortDir
+    });
+  } catch (e) { next(e); }
+};
+
+// JSON list for issued certs (used to refresh table without full reload)
+exports.listIssuedJson = async (req, res, next) => {
+  try {
+    const q = String(req.query.q || '').trim();
+    const page = Math.max(1, parseInt(req.query.page || '1', 10));
+    const pageSize = Math.min(100, Math.max(5, parseInt(req.query.pageSize || '10', 10)));
+    const sortByReq = String(req.query.sortBy || 'not_after');
+    const sortBy = ALLOWED_SORT[sortByReq] ? sortByReq : 'not_after';
+    const sortDir = String(req.query.sortDir || 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
+    const order = `${ALLOWED_SORT[sortBy]} ${sortDir.toUpperCase()}`;
+    const like = `%${q}%`;
+    const where = q
+      ? `WHERE c.serial_hex LIKE @like
+         OR c.subject_cn LIKE @like
+         OR c.subject LIKE @like
+         OR c.sans_json LIKE @like
+         OR IFNULL(r.reason,'') LIKE @like`
+      : '';
+    const countRow = db.prepare(
+      `SELECT COUNT(*) AS cnt FROM certs c LEFT JOIN revocations r ON r.serial_hex = c.serial_hex ${where}`
+    ).get({ like });
+    const total = countRow?.cnt || 0;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const curPage = Math.min(page, totalPages);
+    const offset = (curPage - 1) * pageSize;
+    const rows = db.prepare(
+      `SELECT c.serial_hex, c.subject_cn, c.subject, c.sans_json,
+              c.not_before, c.not_after, c.renewed_from,
+              r.revoked_at, r.reason
+       FROM certs c
+       LEFT JOIN revocations r ON r.serial_hex = c.serial_hex
+       ${where} ORDER BY ${order} LIMIT @limit OFFSET @offset`
+    ).all({ like, limit: pageSize, offset });
+    res.json({ rows, total, totalPages, page: curPage, pageSize, sortBy, sortDir });
   } catch (e) { next(e); }
 };
 
@@ -69,7 +176,7 @@ exports.renderSmimePage = async (req, res, next) => {
   try {
     const smtpHost = (process.env.SMTP_HOST || '').trim();
     const smtpConfigured = smtpHost.length > 0;
-    res.render('smime', { csrfToken: req.csrfToken(), smtpConfigured });
+  res.render('smime', { csrfToken: res.locals.csrfToken, smtpConfigured });
   } catch (e) { next(e); }
 };
 
@@ -140,7 +247,23 @@ exports.issueSmime = async (req, res, next) => {
 
 // ----- Renewal -----
 exports.renderRenewPage = async (req, res, next) => {
-  try { res.render('renew', { csrfToken: req.csrfToken() }); } catch (e) { next(e); }
+  try {
+    let certPemPrefill = '';
+    let keyPemPrefill = '';
+    const serial = String(req.query.serial || '').trim();
+    if (serial) {
+      // Try exact match first
+      const row = db.prepare('SELECT cert_pem FROM certs WHERE serial_hex=?').get(serial);
+      if (row && row.cert_pem) {
+        certPemPrefill = row.cert_pem;
+      } else {
+        // If the serial provided was an original (and cert was renewed), try to find the newest descendant
+        const latest = db.prepare('SELECT cert_pem FROM certs WHERE renewed_from=? ORDER BY not_after DESC LIMIT 1').get(serial);
+        if (latest && latest.cert_pem) certPemPrefill = latest.cert_pem;
+      }
+    }
+    res.render('renew', { csrfToken: res.locals.csrfToken, certPemPrefill, keyPemPrefill, serial });
+  } catch (e) { next(e); }
 };
 
 exports.renewCertificate = async (req, res, next) => {
@@ -165,7 +288,7 @@ exports.renewCertificate = async (req, res, next) => {
 
 // ----- Revocation -----
 exports.renderRevokePage = async (req, res, next) => {
-  try { res.render('revoke', { csrfToken: req.csrfToken() }); } catch (e) { next(e); }
+  try { res.render('revoke', { csrfToken: res.locals.csrfToken }); } catch (e) { next(e); }
 };
 
 exports.revokeCertificate = async (req, res, next) => {
@@ -178,16 +301,42 @@ exports.revokeCertificate = async (req, res, next) => {
     }
 
     const { certPem, keyPem = '', reason = '', reasonCode = 0 } = req.body;
-    const serial = extractSerialDecimal(certPem);
+    const serial = req.body.serial || (certPem ? extractSerialDecimal(certPem) : '');
 
-    if (keyPem) {
+    if (certPem && keyPem) {
       await step.revokeWithMTLS({ certPem, keyPem, reason, reasonCode });
-    } else {
+    } else if (serial) {
       await step.revokeBySerialToken({ serial, reason, reasonCode });
     }
 
     audit.event('REVOKE_CERT', { serial, reasonCode, reason: reason?.slice(0, 120) });
 
+    if (req.accepts('json') && (req.get('x-requested-with') === 'fetch' || req.xhr)) {
+      return res.json({ ok: true, serial });
+    }
     res.render('layout', { body: `<div class="alert alert-warning">Certificate revoked (serial ${serial}).</div>` });
+  } catch (e) { next(e); }
+};
+
+// ----- Helpers: fetch cert PEM by serial -----
+exports.getCertificateBySerial = async (req, res, next) => {
+  try {
+    const serial = String(req.params.serial || '').trim();
+    if (!serial) return res.status(400).json({ error: 'Missing serial' });
+    const row = db.prepare('SELECT cert_pem FROM certs WHERE serial_hex=?').get(serial);
+    if (!row || !row.cert_pem) return res.status(404).json({ error: 'Certificate PEM not found' });
+    res.json({ certPem: row.cert_pem });
+  } catch (e) { next(e); }
+};
+
+exports.downloadCertificateBySerial = async (req, res, next) => {
+  try {
+    const serial = String(req.params.serial || '').trim();
+    if (!serial) { const err = new Error('Missing serial'); err.status = 400; err.expose = true; throw err; }
+    const row = db.prepare('SELECT cert_pem FROM certs WHERE serial_hex=?').get(serial);
+    if (!row || !row.cert_pem) { const err = new Error('Certificate PEM not found'); err.status = 404; err.expose = true; throw err; }
+    res.header('Content-Type', 'application/x-pem-file');
+    res.attachment(`${serial}.crt.pem`);
+    res.send(row.cert_pem);
   } catch (e) { next(e); }
 };

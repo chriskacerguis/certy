@@ -1,20 +1,37 @@
 <h2>Renew Certificate</h2>
 <p class="text-muted">Renewal uses <strong>mTLS</strong>. Paste the current certificate and its private key. The CA will clone fields from the presented cert.</p>
+<% if (typeof serial !== 'undefined' && serial) { %>
+  <div class="alert alert-info">Preparing to renew certificate with serial <code><%= serial %></code>.</div>
+<% } %>
 <form method="post" action="/certs/renew" class="row g-3">
   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <input type="hidden" id="renew-serial" value="<%= typeof serial !== 'undefined' ? serial : '' %>">
   <div class="col-12">
     <label class="form-label">Certificate (PEM)</label>
-    <textarea name="certPem" class="form-control" rows="8" placeholder="-----BEGIN CERTIFICATE-----
+  <textarea name="certPem" class="form-control" rows="8" placeholder="-----BEGIN CERTIFICATE-----
 ...
------END CERTIFICATE-----" required></textarea>
+------END CERTIFICATE-----" required><%= typeof certPemPrefill !== 'undefined' ? certPemPrefill : '' %></textarea>
   </div>
   <div class="col-12">
     <label class="form-label">Private Key (PEM)</label>
-    <textarea name="keyPem" class="form-control" rows="10" placeholder="-----BEGIN PRIVATE KEY-----
+  <textarea name="keyPem" class="form-control" rows="10" placeholder="-----BEGIN PRIVATE KEY-----
 ...
------END PRIVATE KEY-----" required></textarea>
+------END PRIVATE KEY-----" required><%= typeof keyPemPrefill !== 'undefined' ? keyPemPrefill : '' %></textarea>
   </div>
   <div class="col-12">
     <button class="btn btn-success" type="submit">Renew & Download</button>
   </div>
 </form>
+
+<script>
+(function(){
+  const serial = document.getElementById('renew-serial')?.value || '';
+  if (!serial) return;
+  const certArea = document.querySelector('textarea[name="certPem"]');
+  if (!certArea || certArea.value.trim()) return;
+  fetch('/certs/by-serial/' + encodeURIComponent(serial) + '.json', { credentials: 'same-origin' })
+    .then(r => r.ok ? r.json() : Promise.reject(new Error('fetch failed')))
+    .then(j => { if (j && j.certPem) certArea.value = j.certPem; })
+    .catch(() => {});
+})();
+</script>
