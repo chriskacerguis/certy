@@ -3,8 +3,24 @@ const fs = require('fs');
 const path = require('path');
 const Database = require('better-sqlite3');
 
-const CA_DIR  = process.env.LOCAL_CA_DIR || path.join(process.cwd(), '.local-ca');
-const DB_PATH = process.env.LOCAL_CA_DB || path.join(CA_DIR, 'ca.db');
+// Derive DB locations with safe defaults. In tests, isolate DB per worker unless BOTH overrides are provided.
+const isTest = process.env.NODE_ENV === 'test' || !!process.env.JEST_WORKER_ID;
+let CA_DIR;
+let DB_PATH;
+
+if (isTest) {
+  if (process.env.LOCAL_CA_DIR && process.env.LOCAL_CA_DB) {
+    CA_DIR = process.env.LOCAL_CA_DIR;
+    DB_PATH = process.env.LOCAL_CA_DB;
+  } else {
+    const worker = process.env.JEST_WORKER_ID || '1';
+    CA_DIR = path.join(process.cwd(), '.tmp-test', `worker-${worker}`, 'ca');
+    DB_PATH = path.join(CA_DIR, 'ca.db');
+  }
+} else {
+  CA_DIR = process.env.LOCAL_CA_DIR || path.join(process.cwd(), '.local-ca');
+  DB_PATH = process.env.LOCAL_CA_DB || path.join(CA_DIR, 'ca.db');
+}
 const MIGRATIONS_DIR = process.env.MIGRATIONS_DIR || path.join(process.cwd(), 'src', 'migrations');
 
 fs.mkdirSync(CA_DIR, { recursive: true, mode: 0o700 });

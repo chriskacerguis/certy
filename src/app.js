@@ -20,6 +20,7 @@ const authRoutes = require('./routes/auth'); // has GET /login + /callback, POST
 const adminRoutes = require('./routes/admin');
 const acmeRoutes = require('./routes/acme');
 const adminAcmeRoutes = require('./routes/adminAcme');
+const { withRequestContext } = require('./services/auditContext');
 
 const app = express();
 
@@ -64,6 +65,9 @@ app.use((req, res, next) => {
   res.locals.user = req.session.user || null;
   next();
 });
+
+// Attach per-request audit context (user and IP) AFTER session so user is available
+app.use(withRequestContext);
 
 // Rate limit
 const limiter = rateLimit({ windowMs: 60 * 1000, max: parseInt(process.env.RATE_LIMIT_MAX || '120', 10) });

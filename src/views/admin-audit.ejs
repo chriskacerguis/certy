@@ -1,0 +1,100 @@
+<h2>Audit Log</h2>
+
+<form class="row row-cols-lg-auto g-2 align-items-end mb-3" method="get" action="/admin/audit">
+  <div class="col">
+    <label class="form-label">Search</label>
+    <input type="text" class="form-control" name="q" value="<%= q %>" placeholder="in details JSON">
+  </div>
+  <div class="col">
+    <label class="form-label">Type</label>
+    <select name="type" class="form-select">
+      <option value="">All</option>
+      <% types.forEach(t => { %>
+        <option value="<%= t %>" <%= type === t ? 'selected' : '' %>><%= t %></option>
+      <% }) %>
+    </select>
+  </div>
+  <div class="col">
+    <label class="form-label">User</label>
+  <input type="text" class="form-control" name="user" value="<%= typeof userQ !== 'undefined' ? userQ : '' %>" placeholder="name or email">
+  </div>
+  <div class="col">
+    <label class="form-label">IP</label>
+    <input type="text" class="form-control" name="ip" value="<%= ip %>">
+  </div>
+  <div class="col">
+    <label class="form-label">Sort By</label>
+    <select name="sortBy" class="form-select">
+      <option value="ts" <%= sortBy === 'ts' ? 'selected' : '' %>>Timestamp</option>
+      <option value="type" <%= sortBy === 'type' ? 'selected' : '' %>>Type</option>
+      <option value="id" <%= sortBy === 'id' ? 'selected' : '' %>>ID</option>
+  <option value="user_name" <%= sortBy === 'user_name' ? 'selected' : '' %>>User</option>
+  <option value="user_email" <%= sortBy === 'user_email' ? 'selected' : '' %>>Email</option>
+  <option value="ip" <%= sortBy === 'ip' ? 'selected' : '' %>>IP</option>
+    </select>
+  </div>
+  <div class="col">
+    <label class="form-label">Direction</label>
+    <select name="sortDir" class="form-select">
+      <option value="desc" <%= sortDir === 'desc' ? 'selected' : '' %>>Desc</option>
+      <option value="asc" <%= sortDir === 'asc' ? 'selected' : '' %>>Asc</option>
+    </select>
+  </div>
+  <div class="col">
+    <label class="form-label">Page Size</label>
+    <input type="number" class="form-control" name="pageSize" value="<%= pageSize %>" min="5" max="100">
+  </div>
+  <div class="col">
+    <button class="btn btn-primary" type="submit">Apply</button>
+  </div>
+</form>
+
+<div class="table-responsive">
+  <table class="table table-sm table-striped align-middle">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Timestamp</th>
+        <th>Type</th>
+  <th>User</th>
+  <th>IP</th>
+  <th>Details</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (!rows.length) { %>
+        <tr><td colspan="6" class="text-muted">No audit entries found.</td></tr>
+      <% } else { %>
+        <% rows.forEach(r => { %>
+          <tr>
+            <td><%= r.id %></td>
+            <td><code><%= r.ts %></code></td>
+            <td><span class="badge text-bg-secondary"><%= r.type %></span></td>
+            <td>
+              <% if (r.user_name || r.user_email) { %>
+                <div><strong><%= r.user_name || '' %></strong></div>
+                <div class="text-muted"><%= r.user_email || '' %></div>
+              <% } else if (r.user_id) { %>
+                <code><%= r.user_id %></code>
+              <% } else { %>
+                <span class="text-muted">—</span>
+              <% } %>
+            </td>
+            <td><code><%= r.ip || '' %></code></td>
+            <td><pre class="mb-0" style="white-space:pre-wrap; word-break:break-word"><%= r.details_json %></pre></td>
+          </tr>
+        <% }) %>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+
+<nav>
+  <ul class="pagination">
+    <% pages.forEach(p => { %>
+      <li class="page-item <%= p === page ? 'active' : '' %>">
+  <a class="page-link" href="/admin/audit?page=<%= p %>&pageSize=<%= pageSize %>&sortBy=<%= sortBy %>&sortDir=<%= sortDir %>&q=<%= qEnc %>&type=<%= encodeURIComponent(type||'') %>&user=<%= encodeURIComponent((userQ||'')) %>&ip=<%= encodeURIComponent(ip||'') %>"><%= p %></a>
+      </li>
+    <% }) %>
+  </ul>
+</nav>
