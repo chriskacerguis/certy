@@ -19,20 +19,21 @@
         <div class="card-body">
           <% if (!initialized) { %>
             <h5 class="card-title">Initialize CA</h5>
-            <form method="post" action="/ca/init">
+            <form method="post" action="/ca/init" aria-describedby="init-help">
               <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
               <div class="mb-2">
-                <label class="form-label">Name</label>
-                <input name="name" class="form-control" placeholder="My Private CA" required>
+                <label class="form-label" for="ca-name">Name</label>
+                <input id="ca-name" name="name" class="form-control" placeholder="My Private CA" required>
               </div>
               <div class="mb-2">
-                <label class="form-label">DNS (optional)</label>
-                <input name="dns" class="form-control" placeholder="ca.local">
+                <label class="form-label" for="ca-dns">DNS (optional)</label>
+                <input id="ca-dns" name="dns" class="form-control" placeholder="ca.local">
               </div>
               <div class="mb-2">
-                <label class="form-label">Bind Address (ignored in local mode)</label>
-                <input name="address" class="form-control" value="0.0.0.0:8443">
+                <label class="form-label" for="ca-address">Bind Address (ignored in local mode)</label>
+                <input id="ca-address" name="address" class="form-control" value="0.0.0.0:8443">
               </div>
+              <p id="init-help" class="visually-hidden">Provide a name for your CA. DNS and address are optional in local mode.</p>
               <button class="btn btn-primary" type="submit">Initialize</button>
             </form>
           <% } else { %>
@@ -50,22 +51,24 @@
         <div class="card-body">
           <h5 class="card-title text-danger">Destroy CA Data</h5>
           <p class="text-muted mb-3">Removes the local CA directory. Only enabled if <code>ENABLE_CA_LIFECYCLE=true</code>.</p>
-          <form method="post" action="/ca/destroy">
+          <form method="post" action="/ca/destroy" aria-describedby="destroy-help">
             <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
             <button class="btn btn-outline-danger" type="submit">Destroy</button>
           </form>
+          <p id="destroy-help" class="visually-hidden">This will permanently remove local CA data.</p>
           <hr>
           <h6 class="text-danger">Rotate Keystore Secret</h6>
           <p class="text-muted">Re-encrypts keystore entries with the new <code>KEYSTORE_SECRET</code>.</p>
-          <form method="post" action="/ca/rotate-keystore" onsubmit="return confirm('Rotate keystore entries to the new KEYSTORE_SECRET?');">
+          <form method="post" action="/ca/rotate-keystore" onsubmit="return confirm('Rotate keystore entries to the new KEYSTORE_SECRET?');" aria-describedby="rotate-help">
             <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
-            <button class="btn btn-outline-warning" type="submit" <%= hasKeystoreSecretOld ? '' : 'disabled' %>>Rotate Keystore Secret</button>
+            <button class="btn btn-outline-warning" type="submit" <%= hasKeystoreSecretOld ? '' : 'disabled aria-disabled="true" tabindex="-1"' %>>Rotate Keystore Secret</button>
             <% if (!hasKeystoreSecretOld) { %>
               <div class="form-text text-muted mt-2">
                 Set <code>KEYSTORE_SECRET_OLD</code> in your environment to enable rotation, then restart the app.
               </div>
             <% } %>
           </form>
+          <p id="rotate-help" class="visually-hidden">Re-encrypts keys in the database using the new secret. Set KEYSTORE_SECRET_OLD to decrypt existing entries.</p>
         </div>
       </div>
     </div>
@@ -87,9 +90,10 @@
         <h5 class="card-title">Download Root Certificates</h5>
   <p class="text-muted">PEM bundle of all root CAs. Import into your OS or browser trust store to anchor the chain.</p>
         <div class="mt-auto">
-          <a class="btn btn-outline-primary <%= initialized ? '' : 'disabled' %>"
-             href="<%= initialized ? '/ca/download/root' : '#' %>"
-             aria-disabled="<%= !initialized %>">roots.pem</a>
+       <a class="btn btn-outline-primary <%= initialized ? '' : 'disabled' %>"
+         href="<%= initialized ? '/ca/download/root' : '#' %>"
+         aria-disabled="<%= !initialized %>" <%= initialized ? '' : 'tabindex="-1"' %>
+         aria-label="Download root certificates PEM bundle">roots.pem</a>
         </div>
       </div>
     </div>
@@ -100,9 +104,10 @@
         <h5 class="card-title">Download Intermediate Certificates</h5>
   <p class="text-muted">PEM bundle of all intermediate CAs. Provide alongside leaf certificates for complete chains.</p>
         <div class="mt-auto">
-          <a class="btn btn-outline-primary <%= initialized ? '' : 'disabled' %>"
-             href="<%= initialized ? '/ca/download/intermediate' : '#' %>"
-             aria-disabled="<%= !initialized %>">intermediates.pem</a>
+       <a class="btn btn-outline-primary <%= initialized ? '' : 'disabled' %>"
+         href="<%= initialized ? '/ca/download/intermediate' : '#' %>"
+         aria-disabled="<%= !initialized %>" <%= initialized ? '' : 'tabindex="-1"' %>
+         aria-label="Download intermediate certificates PEM bundle">intermediates.pem</a>
         </div>
       </div>
     </div>
@@ -115,16 +120,17 @@
         <% if (typeof s3Enabled !== 'undefined' && s3Enabled) { %>
           <div class="small text-muted mb-3">
             <% if (typeof s3PublicUrl !== 'undefined' && s3PublicUrl) { %>
-              Public URL: <a href="<%= s3PublicUrl %>" target="_blank" rel="noopener"><%= s3PublicUrl %></a>
+              Public URL: <a href="<%= s3PublicUrl %>" target="_blank" rel="noopener" aria-label="Open public CRL URL in a new tab"><%= s3PublicUrl %></a>
             <% } else { %>
               S3 publishing is enabled. Configure <code>S3_CRL_PUBLIC_URL</code> for a fixed public link (optional).
             <% } %>
           </div>
         <% } %>
         <div class="mt-auto d-flex gap-2">
-          <a class="btn btn-outline-secondary <%= initialized ? '' : 'disabled' %>"
-             href="<%= initialized ? '/ca/download/crl' : '#' %>"
-             aria-disabled="<%= !initialized %>">Download CRL (PEM)</a>
+       <a class="btn btn-outline-secondary <%= initialized ? '' : 'disabled' %>"
+         href="<%= initialized ? '/ca/download/crl' : '#' %>"
+         aria-disabled="<%= !initialized %>"
+         aria-label="Download Certificate Revocation List in PEM format">Download CRL (PEM)</a>
 
           <% if (typeof s3Enabled !== 'undefined' && s3Enabled) { %>
             <form method="post" action="/ca/publish/crl" class="mb-0">

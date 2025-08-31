@@ -1,22 +1,23 @@
 <h2>Issue TLS Certificate</h2>
 <div id="flash-inline"></div>
-<form id="issue-form" method="post" action="/certs/issue" class="row g-3">
+<form id="issue-form" method="post" action="/certs/issue" class="row g-3" aria-describedby="issue-help">
   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
   <div class="col-md-6">
-    <label class="form-label">Common Name</label>
-    <input class="form-control" name="commonName" placeholder="api.internal.example" required>
+    <label class="form-label" for="commonName">Common Name</label>
+    <input id="commonName" class="form-control" name="commonName" placeholder="api.internal.example" required>
   </div>
   <div class="col-md-6">
-    <label class="form-label">Subject Alternative Names (comma-sep)</label>
-    <input class="form-control" name="sans" placeholder="api.internal.example,10.0.0.12">
+    <label class="form-label" for="sans">Subject Alternative Names (comma-sep)</label>
+    <input id="sans" class="form-control" name="sans" placeholder="api.internal.example,10.0.0.12" aria-describedby="sansHelp">
+    <div id="sansHelp" class="form-text">Comma-separated DNS, IP, or email values.</div>
   </div>
   <div class="col-md-3">
-    <label class="form-label">Validity (days)</label>
-    <input class="form-control" name="days" type="number" value="365" min="1" max="825">
+    <label class="form-label" for="days">Validity (days)</label>
+    <input id="days" class="form-control" name="days" type="number" value="365" min="1" max="825">
   </div>
   <div class="col-md-3">
-    <label class="form-label">Key Type</label>
-    <select name="keyType" class="form-select">
+    <label class="form-label" for="keyType">Key Type</label>
+    <select id="keyType" name="keyType" class="form-select">
   <option>RSA</option>
   <option>EC</option>
     </select>
@@ -27,5 +28,6 @@
   <div class="col-12">
   <button id="issue-submit" class="btn btn-primary" type="submit">Generate & Download</button>
   </div>
+  <p id="issue-help" class="visually-hidden">Fill in subject fields and submit to generate and download the certificate.</p>
 </form>
 <script src="/public/js/cert.js"></script>

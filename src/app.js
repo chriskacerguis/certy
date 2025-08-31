@@ -75,6 +75,8 @@ app.use(limiter);
 
 // CSRF: attach token shim and make token available in views
 app.use(attachCsrfToken);
+// Expose current request path to views for active nav/a11y
+app.use((req, res, next) => { res.locals.currentPath = req.path || ''; next(); });
 app.use((req, res, next) => {
   // Only generate on safe methods to avoid rotating the cookie before POST validation
   if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {

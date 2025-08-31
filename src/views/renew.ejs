@@ -3,18 +3,18 @@
 <% if (typeof serial !== 'undefined' && serial) { %>
   <div class="alert alert-info">Preparing to renew certificate with serial <code><%= serial %></code>.</div>
 <% } %>
-<form method="post" action="/certs/renew" class="row g-3">
+<form method="post" action="/certs/renew" class="row g-3" aria-describedby="renew-help">
   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
   <input type="hidden" id="renew-serial" value="<%= typeof serial !== 'undefined' ? serial : '' %>">
   <div class="col-12">
-    <label class="form-label">Certificate (PEM)</label>
-  <textarea name="certPem" class="form-control" rows="8" placeholder="-----BEGIN CERTIFICATE-----
+    <label class="form-label" for="certPem">Certificate (PEM)</label>
+  <textarea id="certPem" name="certPem" class="form-control" rows="8" placeholder="-----BEGIN CERTIFICATE-----
 ...
 ------END CERTIFICATE-----" required><%= typeof certPemPrefill !== 'undefined' ? certPemPrefill : '' %></textarea>
   </div>
   <div class="col-12">
-    <label class="form-label">Private Key (PEM)</label>
-  <textarea name="keyPem" class="form-control" rows="10" placeholder="-----BEGIN PRIVATE KEY-----
+    <label class="form-label" for="keyPem">Private Key (PEM)</label>
+  <textarea id="keyPem" name="keyPem" class="form-control" rows="10" placeholder="-----BEGIN PRIVATE KEY-----
 ...
 ------END PRIVATE KEY-----" required><%= typeof keyPemPrefill !== 'undefined' ? keyPemPrefill : '' %></textarea>
   </div>
@@ -22,6 +22,7 @@
   <div class="col-12">
     <button class="btn btn-success" type="submit">Renew & Download</button>
   </div>
+  <p id="renew-help" class="visually-hidden">Paste your existing certificate and private key to renew and download a new certificate.</p>
 </form>
 
 <script>

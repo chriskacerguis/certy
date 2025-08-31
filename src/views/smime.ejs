@@ -1,20 +1,20 @@
 <h2>Issue S/MIME (PKCS#12)</h2>
-<form method="post" action="/certs/smime" class="row g-3">
+<form method="post" action="/certs/smime" class="row g-3" aria-describedby="smime-help">
   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
   <div class="col-md-6">
-    <label class="form-label">Email Address</label>
-    <input class="form-control" name="email" type="email" placeholder="user@example.com" required>
+  <label class="form-label" for="smime-email">Email Address</label>
+  <input id="smime-email" class="form-control" name="email" type="email" placeholder="user@example.com" required>
   </div>
 
   <div class="col-md-6">
-    <label class="form-label">Display Name (optional)</label>
-    <input class="form-control" name="name" placeholder="User Name">
+  <label class="form-label" for="smime-name">Display Name (optional)</label>
+  <input id="smime-name" class="form-control" name="name" placeholder="User Name">
   </div>
 
   <div class="col-md-6">
-    <label class="form-label">PKCS#12 Password</label>
-    <input class="form-control" name="password" type="password" required>
+  <label class="form-label" for="smime-password">PKCS#12 Password</label>
+  <input id="smime-password" class="form-control" name="password" type="password" required>
   </div>
 
   <hr>
@@ -28,7 +28,7 @@
     </div>
   <% } else { %>
     <div class="col-12 mt-2">
-      <div class="alert alert-warning">
+      <div class="alert alert-warning" role="alert">
         SMTP is not configured, so email delivery is disabled. The certificate will only be available for download.
       </div>
     </div>
@@ -37,4 +37,5 @@
   <div class="col-12">
     <button class="btn btn-primary" type="submit">Generate .p12</button>
   </div>
+  <p id="smime-help" class="visually-hidden">Provide email, optional name, and password to generate a PKCS#12 bundle; optionally email it if SMTP is configured.</p>
 </form>

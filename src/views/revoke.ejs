@@ -1,26 +1,26 @@
 <h2>Revoke Certificate</h2>
 <p class="text-muted">Revocation is <em>passive</em> in step-ca: revoked certs cannot be renewed and will expire normally. Authenticate via mTLS (cert+key) or by serial with a provisioner token.</p>
-<form method="post" action="/certs/revoke" class="row g-3">
+<form method="post" action="/certs/revoke" class="row g-3" aria-describedby="revoke-help">
   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
   <div class="col-12">
-    <label class="form-label">Certificate (PEM) — required</label>
-    <textarea name="certPem" class="form-control" rows="8" placeholder="-----BEGIN CERTIFICATE-----
+  <label class="form-label" for="revoke-certPem">Certificate (PEM) — required</label>
+  <textarea id="revoke-certPem" name="certPem" class="form-control" rows="8" placeholder="-----BEGIN CERTIFICATE-----
 ...
 -----END CERTIFICATE-----" required></textarea>
   </div>
   <div class="col-12">
-    <label class="form-label">Private Key (PEM) — optional (for mTLS)</label>
-    <textarea name="keyPem" class="form-control" rows="10" placeholder="-----BEGIN PRIVATE KEY-----
+  <label class="form-label" for="revoke-keyPem">Private Key (PEM) — optional (for mTLS)</label>
+  <textarea id="revoke-keyPem" name="keyPem" class="form-control" rows="10" placeholder="-----BEGIN PRIVATE KEY-----
 ...
 -----END PRIVATE KEY-----"></textarea>
   </div>
   <div class="col-md-6">
-    <label class="form-label">Reason (optional)</label>
-    <input class="form-control" name="reason" placeholder="key compromise">
+  <label class="form-label" for="revoke-reason">Reason (optional)</label>
+  <input id="revoke-reason" class="form-control" name="reason" placeholder="key compromise">
   </div>
   <div class="col-md-6">
-    <label class="form-label">Reason Code</label>
-    <select class="form-select" name="reasonCode">
+  <label class="form-label" for="revoke-reasonCode">Reason Code</label>
+  <select id="revoke-reasonCode" class="form-select" name="reasonCode">
       <option value="0">unspecified (0)</option>
       <option value="1">keyCompromise (1)</option>
       <option value="2">cACompromise (2)</option>
@@ -37,4 +37,5 @@
   <div class="col-12">
     <button class="btn btn-warning" type="submit">Revoke Certificate</button>
   </div>
+  <p id="revoke-help" class="visually-hidden">Provide certificate and optional key or reason to revoke a certificate.</p>
 </form>

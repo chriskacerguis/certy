@@ -51,14 +51,15 @@
 
 <div class="table-responsive">
   <table class="table table-sm table-striped align-middle">
+    <caption class="visually-hidden">Audit log entries with filters, sorting, and paging</caption>
     <thead>
       <tr>
-        <th>ID</th>
-        <th>Timestamp</th>
-        <th>Type</th>
-  <th>User</th>
-  <th>IP</th>
-  <th>Details</th>
+        <th scope="col">ID</th>
+        <th scope="col">Timestamp</th>
+        <th scope="col">Type</th>
+  <th scope="col">User</th>
+  <th scope="col">IP</th>
+  <th scope="col">Details</th>
       </tr>
     </thead>
     <tbody>
@@ -89,11 +90,11 @@
   </table>
 </div>
 
-<nav>
+<nav aria-label="Audit log pages">
   <ul class="pagination">
     <% pages.forEach(p => { %>
       <li class="page-item <%= p === page ? 'active' : '' %>">
-  <a class="page-link" href="/admin/audit?page=<%= p %>&pageSize=<%= pageSize %>&sortBy=<%= sortBy %>&sortDir=<%= sortDir %>&q=<%= qEnc %>&type=<%= encodeURIComponent(type||'') %>&user=<%= encodeURIComponent((userQ||'')) %>&ip=<%= encodeURIComponent(ip||'') %>"><%= p %></a>
+  <a class="page-link" href="/admin/audit?page=<%= p %>&pageSize=<%= pageSize %>&sortBy=<%= sortBy %>&sortDir=<%= sortDir %>&q=<%= qEnc %>&type=<%= encodeURIComponent(type||'') %>&user=<%= encodeURIComponent((userQ||'')) %>&ip=<%= encodeURIComponent(ip||'') %>" <%= p===page ? 'aria-current="page"' : '' %>><%= p %></a>
       </li>
     <% }) %>
   </ul>

@@ -44,15 +44,16 @@
 
 <div class="table-responsive">
   <table class="table table-sm table-striped align-middle">
+    <caption class="visually-hidden">Issued certificates list with search, sorting, and paging</caption>
     <thead>
       <tr>
-        <th>Serial</th>
-        <th>CN</th>
-        <th>Not Before</th>
-        <th>Not After</th>
-        <th>SANs</th>
-        <th>Revoked</th>
-        <th>Actions</th>
+        <th scope="col">Serial</th>
+        <th scope="col">CN</th>
+        <th scope="col">Not Before</th>
+        <th scope="col">Not After</th>
+        <th scope="col">SANs</th>
+        <th scope="col">Revoked</th>
+        <th scope="col">Actions</th>
       </tr>
     </thead>
     <tbody>
@@ -99,21 +100,21 @@
 </div>
 
 <% if (totalPages > 1) { %>
-<nav>
-  <ul class="pagination">
+<nav aria-label="Issued certificates pages">
+  <ul class="pagination" role="list">
     <% const base = `?q=${qEnc}&pageSize=${pageSize}&sortBy=${sortBy}&sortDir=${sortDir}`; %>
     <li class="page-item <%= page===1?'disabled':'' %>">
-      <a class="page-link" href="<%= page===1 ? '#' : base + '&page=' + (page-1) %>">Prev</a>
+      <a class="page-link" href="<%= page===1 ? '#' : base + '&page=' + (page-1) %>" <%= page===1 ? 'aria-disabled="true" tabindex="-1"' : '' %>>Prev</a>
     </li>
 
     <% pages.forEach(p => { %>
       <li class="page-item <%= p===page?'active':'' %>">
-        <a class="page-link" href="<%= base + '&page=' + p %>"><%= p %></a>
+        <a class="page-link" href="<%= base + '&page=' + p %>" <%= p===page ? 'aria-current="page"' : '' %>><%= p %></a>
       </li>
     <% }) %>
 
     <li class="page-item <%= page===totalPages?'disabled':'' %>">
-      <a class="page-link" href="<%= page===totalPages ? '#' : base + '&page=' + (page+1) %>">Next</a>
+      <a class="page-link" href="<%= page===totalPages ? '#' : base + '&page=' + (page+1) %>" <%= page===totalPages ? 'aria-disabled="true" tabindex="-1"' : '' %>>Next</a>
     </li>
   </ul>
 </nav>

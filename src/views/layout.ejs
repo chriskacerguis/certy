@@ -8,6 +8,7 @@
   <link href="/public/css/custom.css" rel="stylesheet">
 </head>
 <body>
+<a href="#main-content" class="skip-link">Skip to main content</a>
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
   <div class="container-fluid">
     <a class="navbar-brand" href="/">Certy</a>
@@ -15,15 +16,16 @@
       <span class="navbar-toggler-icon"></span>
     </button>
     <div id="navbars" class="collapse navbar-collapse">
+      <% const cp = String(typeof currentPath !== 'undefined' ? currentPath : ''); %>
       <ul class="navbar-nav me-auto">
-        <li class="nav-item"><a class="nav-link" href="/ca">CA</a></li>
-        <li class="nav-item"><a class="nav-link" href="/certs/new">Issue Cert</a></li>
-        <li class="nav-item"><a class="nav-link" href="/certs/smime">S/MIME</a></li>
-        <li class="nav-item"><a class="nav-link" href="/certs/renew">Renew</a></li>
-        <li class="nav-item"><a class="nav-link" href="/certs/revoke">Revoke</a></li>
-        <li class="nav-item"><a class="nav-link" href="/admin/certs">Issued</a></li>
-        <li class="nav-item"><a class="nav-link" href="/admin/acme">ACME</a></li>
-  <li class="nav-item"><a class="nav-link" href="/admin/audit">Audit</a></li>
+        <li class="nav-item"><a class="nav-link <%= cp.startsWith('/ca') ? 'active' : '' %>" href="/ca" <%= cp.startsWith('/ca') ? 'aria-current="page"' : '' %>>CA</a></li>
+        <li class="nav-item"><a class="nav-link <%= cp.startsWith('/certs/new') ? 'active' : '' %>" href="/certs/new" <%= cp.startsWith('/certs/new') ? 'aria-current="page"' : '' %>>Issue Cert</a></li>
+        <li class="nav-item"><a class="nav-link <%= cp.startsWith('/certs/smime') ? 'active' : '' %>" href="/certs/smime" <%= cp.startsWith('/certs/smime') ? 'aria-current="page"' : '' %>>S/MIME</a></li>
+        <li class="nav-item"><a class="nav-link <%= cp.startsWith('/certs/renew') ? 'active' : '' %>" href="/certs/renew" <%= cp.startsWith('/certs/renew') ? 'aria-current="page"' : '' %>>Renew</a></li>
+        <li class="nav-item"><a class="nav-link <%= cp.startsWith('/certs/revoke') ? 'active' : '' %>" href="/certs/revoke" <%= cp.startsWith('/certs/revoke') ? 'aria-current="page"' : '' %>>Revoke</a></li>
+        <li class="nav-item"><a class="nav-link <%= cp.startsWith('/admin/certs') ? 'active' : '' %>" href="/admin/certs" <%= cp.startsWith('/admin/certs') ? 'aria-current="page"' : '' %>>Issued</a></li>
+        <li class="nav-item"><a class="nav-link <%= cp.startsWith('/admin/acme') ? 'active' : '' %>" href="/admin/acme" <%= cp.startsWith('/admin/acme') ? 'aria-current="page"' : '' %>>ACME</a></li>
+  <li class="nav-item"><a class="nav-link <%= cp.startsWith('/admin/audit') ? 'active' : '' %>" href="/admin/audit" <%= cp.startsWith('/admin/audit') ? 'aria-current="page"' : '' %>>Audit</a></li>
       </ul>
       <div class="d-flex">
         <% if (typeof user !== 'undefined' && user) { %>
@@ -39,9 +41,9 @@
     </div>
   </div>
 </nav>
-<main class="container py-4">
+<main id="main-content" class="container py-4" role="main">
   <% if (typeof authBypassed !== 'undefined' && authBypassed) { %>
-    <div class="alert alert-warning">
+  <div class="alert alert-warning" role="alert">
       Authentication is <strong>disabled</strong> for development
       (<code>AUTH_OPTIONAL=true</code> or OIDC not configured).
     </div>

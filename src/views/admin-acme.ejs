@@ -59,15 +59,16 @@
 
 <div class="table-responsive">
   <table class="table table-sm table-striped align-middle">
+    <caption class="visually-hidden">ACME <%= tab %> table with search, sorting, and paging</caption>
     <thead>
       <% if (tab==='orders') { %>
-        <tr><th>ID</th><th>Status</th><th>Identifiers</th><th>Account (KID)</th><th>Created</th><th>Cert</th></tr>
+  <tr><th scope="col">ID</th><th scope="col">Status</th><th scope="col">Identifiers</th><th scope="col">Account (KID)</th><th scope="col">Created</th><th scope="col">Cert</th></tr>
       <% } else if (tab==='accounts') { %>
-        <tr><th>ID</th><th>KID</th><th>Contacts</th><th>Orders</th><th>Created</th></tr>
+  <tr><th scope="col">ID</th><th scope="col">KID</th><th scope="col">Contacts</th><th scope="col">Orders</th><th scope="col">Created</th></tr>
       <% } else if (tab==='authzs') { %>
-        <tr><th>ID</th><th>Order</th><th>Identifier</th><th>Status</th><th>URL</th></tr>
+  <tr><th scope="col">ID</th><th scope="col">Order</th><th scope="col">Identifier</th><th scope="col">Status</th><th scope="col">URL</th></tr>
       <% } else { %>
-        <tr><th>ID</th><th>Authz</th><th>Type</th><th>Token</th><th>Status</th><th>Identifier</th><th>Validated</th></tr>
+  <tr><th scope="col">ID</th><th scope="col">Authz</th><th scope="col">Type</th><th scope="col">Token</th><th scope="col">Status</th><th scope="col">Identifier</th><th scope="col">Validated</th></tr>
       <% } %>
     </thead>
     <tbody>
@@ -148,15 +149,15 @@
   <ul class="pagination">
     <% const base = `?tab=${tab}&q=${qEnc}&pageSize=${pageSize}&sortBy=${sortBy}&sortDir=${sortDir}`; %>
     <li class="page-item <%= page===1?'disabled':'' %>">
-      <a class="page-link" href="<%= page===1 ? '#' : base + '&page=' + (page-1) %>">Prev</a>
+      <a class="page-link" href="<%= page===1 ? '#' : base + '&page=' + (page-1) %>" <%= page===1 ? 'aria-disabled="true" tabindex="-1"' : '' %>>Prev</a>
     </li>
     <% pages.forEach(p => { %>
       <li class="page-item <%= p===page?'active':'' %>">
-        <a class="page-link" href="<%= base + '&page=' + p %>"><%= p %></a>
+        <a class="page-link" href="<%= base + '&page=' + p %>" <%= p===page ? 'aria-current="page"' : '' %>><%= p %></a>
       </li>
     <% }) %>
     <li class="page-item <%= page===totalPages?'disabled':'' %>">
-      <a class="page-link" href="<%= page===totalPages ? '#' : base + '&page=' + (page+1) %>">Next</a>
+      <a class="page-link" href="<%= page===totalPages ? '#' : base + '&page=' + (page+1) %>" <%= page===totalPages ? 'aria-disabled="true" tabindex="-1"' : '' %>>Next</a>
     </li>
   </ul>
 </nav>
