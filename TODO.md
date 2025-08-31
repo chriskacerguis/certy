@@ -1,0 +1,43 @@
+# todo / roadmap items
+
+## Audit page
+
+- [ ] Date range filters and CSV/JSON export
+- [ ] Row “details” modal (pretty-printed JSON) and quick filters by user/IP
+- [ ] Retention setting (e.g., purge older than N days)
+
+## Security and hardening
+
+- [x] Banner when KEYSTORE_SECRET_OLD is set (reminder to remove after rotation)
+- [ ] Health/status page: CA initialized, DB path, CRL URL, key warnings
+- [ ] Clear docs for TRUST_PROXY, secure cookies, CSP, and CSRF
+
+## Ops and reliability
+
+- [ ] Backup/restore guide with exact files and minimal downtime steps
+- [ ] CLI/admin script for headless keystore rotation and CA destroy (with confirmation)
+- [ ] CRL publish: retry/backoff and “last published” status in UI
+
+## Observability
+
+- [ ] /metrics (Prometheus) for request counts, durations, errors, queue sizes
+- [ ] Log guidance: levels, sampling, correlation IDs
+
+## Certificate UX
+
+- [ ] Search/filter issued certs; quick renew/reissue and bulk revoke with audit
+- [ ] Optional email templates for S/MIME delivery
+- [ ] Multi-language support
+- [x] Disability compliant
+
+## Access control
+
+- [ ] Basic roles (admin vs. viewer/issuer) and audit-only view
+
+## Testing
+
+- [ ] E2E tests for rotation, destroy, CRL publish; migration integrity test
+
+## Docs
+
+- [ ] Admin route/API reference, threat model, and a short hardening checklist
