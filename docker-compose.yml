@@ -1,28 +1,13 @@
 services:
 
-  # app:
+  # certy:
   #   build: .
-  #   container_name: stepca-ui
-  #   environment:
-  #     - PORT=3000
-  #     - STEP_CA_URL=https://step-ca:8443
-  #     - PROVISIONER_NAME=admin@example.com
-  #     - PROVISIONER_KID=
-  #     - PROVISIONER_PRIVATE_JWK_JSON=
-  #     - STEP_CA_ROOT_PEM_B64=
-  #     - ENABLE_CA_LIFECYCLE=false
-  #     # OIDC Settings - point to Dev OIDC Toolkit
-  #     - OIDC_ISSUER=http://dev-oidc:8080
-  #     - OIDC_CLIENT_ID=client
-  #     - OIDC_CLIENT_SECRET=secret
-  #     - OIDC_REDIRECT_URI=http://localhost:3000/auth/callback
-  #     - OIDC_SCOPES=openid profile email
-  #     - SESSION_SECRET=change_me
-  #     - TRUST_PROXY=false
+  #   container_name: certy
+  #   env_file:
+  #     - .env
   #   ports:
   #     - "3000:3000"
   #   depends_on:
-  #     - step-ca
   #     - dev-oidc
 
   dev-oidc:

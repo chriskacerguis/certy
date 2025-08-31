@@ -31,6 +31,68 @@ Optional at-rest encryption for private keys:
 - Set `KEYSTORE_SECRET` (>= 8 chars). Private keys stored in `keystore` will be encrypted using AES-256-GCM.
 - Without `KEYSTORE_SECRET`, PEMs are stored as plaintext in the database.
 
+### Docker backup and restore
+
+By default inside the container, data lives at `/app/.local-ca` (SQLite `ca.db` plus WAL/SHM). Mount this to a named volume or host directory for persistence.
+
+Recommended compose volume mapping (example):
+
+```yaml
+services:
+	certy:
+		build: .
+		volumes:
+			- certy_data:/app/.local-ca
+volumes:
+	certy_data:
+```
+
+Hot backup (container running) with Docker Compose:
+
+```bash
+# Adjust "app" to your compose service name
+docker compose exec certy sh -c 'tar czf - -C /app/.local-ca .' > certy-backup-$(date +%F).tgz
+```
+
+Cold backup (less risk):
+
+```bash
+# Stop the app to quiesce writes
+docker compose stop certy
+
+# If using a named volume (e.g., certy_data)
+docker run --rm -v certy_data:/data -v "$PWD":/backup alpine sh -c 'tar czf /backup/certy-backup-$(date +%F).tgz -C /data .'
+
+# If using a bind mount to a host path (e.g., ./data/.local-ca)
+tar czf certy-backup-$(date +%F).tgz -C ./data/.local-ca .
+
+# Restart the app
+docker compose start certy
+```
+
+Restore from a backup archive:
+
+```bash
+# Stop the app
+docker compose stop certy
+
+# Named volume restore (replace filename as needed)
+docker run --rm -v certy_data:/data -v "$PWD":/backup alpine sh -c 'rm -rf /data/* && tar xzf /backup/certy-backup-YYYY-MM-DD.tgz -C /data'
+
+# Bind mount restore to host path
+rm -rf ./data/.local-ca/*
+tar xzf certy-backup-YYYY-MM-DD.tgz -C ./data/.local-ca
+
+# Start the app
+docker compose start certy
+```
+
+Notes:
+
+- Hot backups must include WAL/SHM; the tar commands above archive the entire directory safely.
+- Prefer cold backups when possible to minimize risk of partial writes.
+- If you customized `LOCAL_CA_DIR`/`LOCAL_CA_DB`, adjust paths accordingly.
+
 ## Rotate the keystore secret
 
 Use this when you want to change `KEYSTORE_SECRET`. Rotation re-encrypts all private keys in the `keystore` table from the old secret (or plaintext) to the new secret.
