@@ -11,26 +11,6 @@ If you are running this in a homelab and aren't worried too much about security,
 - Run `cp .env.example .env`
 - Run `docker compose up -d`
 
-## Storage and backups
-
-All CA data is stored in a single SQLite database at `.local-ca/ca.db` by default (configurable via `LOCAL_CA_DB`).
-
-What lives in SQLite:
-
-- CA metadata and issued cert index
-- ACME accounts, orders, authzs
-- Root and Intermediate certificates and private keys (PEM), in table `keystore`
-
-Backup strategy:
-
-- Stop the app or ensure no writes, then back up the `ca.db` file
-- Or copy hot with WAL mode: include both `ca.db` and `ca.db-wal`/`ca.db-shm` if present
-
-Optional at-rest encryption for private keys:
-
-- Set `KEYSTORE_SECRET` (>= 8 chars). Private keys stored in `keystore` will be encrypted using AES-256-GCM.
-- Without `KEYSTORE_SECRET`, PEMs are stored as plaintext in the database.
-
 ### Docker backup and restore
 
 By default inside the container, data lives at `/app/.local-ca` (SQLite `ca.db` plus WAL/SHM). Mount this to a named volume or host directory for persistence.
