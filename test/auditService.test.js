@@ -18,6 +18,7 @@ describe('auditService', () => {
 
   test('redacts sensitive fields and persists to DB', async () => {
     process.env.NODE_ENV = 'test';
+  process.env.MIGRATIONS_DIR = path.join(__dirname, '..', 'src', 'migrations');
     const audit = require('../src/services/auditService');
     const { db } = require('../src/services/db');
     audit.event('TEST', {

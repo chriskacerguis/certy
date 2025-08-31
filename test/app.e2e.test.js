@@ -37,8 +37,8 @@ describe('App E2E routes', () => {
     const app = newApp();
     const agent = request.agent(app);
     await agent.get('/healthz').expect(200).expect('Content-Type', /json/);
-    const r = await agent.get('/').expect(200);
-    expect(r.text).toContain('Welcome to the Step-CA Frontend');
+  const r = await agent.get('/').expect(200);
+  expect(r.text).toContain('Welcome to Certy!');
   });
 
   test('CA init -> download root/intermediate', async () => {
