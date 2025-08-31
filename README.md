@@ -24,10 +24,29 @@ Optional at-rest encryption for private keys:
 - Set `KEYSTORE_SECRET` (>= 8 chars). Private keys stored in `keystore` will be encrypted using AES-256-GCM.
 - Without `KEYSTORE_SECRET`, PEMs are stored as plaintext in the database.
 
-One-time migration:
+## Rotate the keystore secret
 
-- On first run, any legacy PEM files found under `.local-ca/certs` and `.local-ca/private` will be imported into SQLite automatically.
+Use this when you want to change `KEYSTORE_SECRET`. Rotation re-encrypts all private keys in the `keystore` table from the old secret (or plaintext) to the new secret.
 
+Prerequisites:
+
+- Make a backup of your SQLite DB file (see Storage and backups).
+- Set a new, strong `KEYSTORE_SECRET` (>= 8 chars).
+- If existing entries are currently encrypted, set `KEYSTORE_SECRET_OLD` to the previous secret so they can be decrypted.
+- Ensure `ENABLE_CA_LIFECYCLE=true` so the admin action is visible.
+
+Steps:
+
+1. Restart the app so the new environment variables take effect.
+2. Open the CA admin page in the UI (Admin → CA).
+3. Click "Rotate Keystore Secret" and confirm. You’ll see a summary like "Rotated X/Y entries".
+4. Remove `KEYSTORE_SECRET_OLD` from your environment and restart the app again.
+
+Notes:
+
+- Rotation updates only how keys are stored at rest; certificates themselves are unchanged.
+- The operation is transactional; if a keystore item cannot be decrypted with the provided secrets, rotation aborts without partial updates.
+- It’s safe to re-run; entries already encrypted with the new secret are skipped.
 
 ## How to use with acme.sh (example)
 

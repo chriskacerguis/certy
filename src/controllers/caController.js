@@ -2,6 +2,7 @@ const { validationResult } = require('express-validator');
 const step = require('../services/stepCaService');
 const audit = require('../services/auditService');
 const crlPublisher = require('../services/crlPublisher');
+const { db } = require('../services/db');
 
 exports.renderPage = async (req, res, next) => {
   try {
@@ -10,7 +11,8 @@ exports.renderPage = async (req, res, next) => {
     const s3Enabled = crlPublisher.isEnabled();
     const s3PublicUrl = s3Enabled ? crlPublisher.derivePublicUrl() : '';
   const { DB_PATH, CA_DIR } = require('../services/db');
-  res.render('ca', { csrfToken: req.csrfToken(), isInitialized, lifecycleEnabled, s3Enabled, s3PublicUrl, dbPath: DB_PATH, caDir: CA_DIR, migrateJson: String(process.env.MIGRATE_JSON||'false') });
+  const hasKeystoreSecretOld = String(process.env.KEYSTORE_SECRET_OLD || '').trim().length > 0;
+  res.render('ca', { csrfToken: req.csrfToken(), isInitialized, lifecycleEnabled, s3Enabled, s3PublicUrl, dbPath: DB_PATH, caDir: CA_DIR, migrateJson: String(process.env.MIGRATE_JSON||'false'), hasKeystoreSecretOld });
   } catch (e) {
     next(e);
   }
@@ -124,5 +126,17 @@ exports.publishCRLToS3 = async (req, res, next) => {
         <div class="mt-2"><a class="btn btn-sm btn-outline-primary" href="${out.url}" target="_blank" rel="noopener">View public CRL</a></div>
       </div>`
     });
+  } catch (e) { next(e); }
+};
+
+exports.rotateKeystoreSecret = async (req, res, next) => {
+  try {
+    if (String(process.env.ENABLE_CA_LIFECYCLE || '').toLowerCase() !== 'true') {
+      const err = new Error('CA lifecycle operations are disabled. Set ENABLE_CA_LIFECYCLE=true to allow.');
+      err.status = 403; err.expose = true; throw err;
+    }
+    const result = await step.rotateKeystoreSecret();
+    const msg = `Keystore secret rotation complete. Rotated ${result.rotated}/${result.total} entries.`;
+    return res.render('layout', { body: `<div class="alert alert-success">${msg}</div>` });
   } catch (e) { next(e); }
 };

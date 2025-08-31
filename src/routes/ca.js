@@ -13,6 +13,7 @@ router.post(
   ca.initCA
 );
 router.post('/destroy', ca.destroyCA);
+router.post('/rotate-keystore', ca.rotateKeystoreSecret);
 
 // Downloads
 router.get('/download/root', ca.downloadRoot);

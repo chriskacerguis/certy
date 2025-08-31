@@ -45,6 +45,18 @@
             <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
             <button class="btn btn-outline-danger" type="submit">Destroy</button>
           </form>
+          <hr>
+          <h6 class="text-danger">Rotate Keystore Secret</h6>
+          <p class="text-muted">Re-encrypts keystore entries with the new <code>KEYSTORE_SECRET</code>.</p>
+          <form method="post" action="/ca/rotate-keystore" onsubmit="return confirm('Rotate keystore entries to the new KEYSTORE_SECRET?');">
+            <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+            <button class="btn btn-outline-warning" type="submit" <%= hasKeystoreSecretOld ? '' : 'disabled' %>>Rotate Keystore Secret</button>
+            <% if (!hasKeystoreSecretOld) { %>
+              <div class="form-text text-muted mt-2">
+                Set <code>KEYSTORE_SECRET_OLD</code> in your environment to enable rotation, then restart the app.
+              </div>
+            <% } %>
+          </form>
         </div>
       </div>
     </div>

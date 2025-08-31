@@ -77,14 +77,14 @@ function crlDistributionPointsExt() {
   };
 }
 
-// ----- SQLite keystore helpers (with optional encryption) -----
-function deriveKey() {
-  const secret = process.env.KEYSTORE_SECRET || '';
-  if (!secret || secret.length < 8) return null; // disabled or too weak
-  return crypto.createHash('sha256').update(secret, 'utf8').digest();
+// ----- SQLite keystore helpers (with optional encryption and rotation support) -----
+function deriveKey(secret) {
+  const s = (secret ?? process.env.KEYSTORE_SECRET) || '';
+  if (!s || s.length < 8) return null; // disabled or too weak
+  return crypto.createHash('sha256').update(s, 'utf8').digest();
 }
-function encMaybe(pem) {
-  const key = deriveKey();
+function encMaybe(pem, secret) {
+  const key = deriveKey(secret);
   if (!key) return pem;
   const iv = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
@@ -93,14 +93,9 @@ function encMaybe(pem) {
   const payload = Buffer.concat([iv, tag, enc]).toString('base64');
   return 'ENCv1:' + payload;
 }
-function decMaybe(str) {
-  if (!str) return null;
-  if (!str.startsWith('ENCv1:')) return str;
-  const key = deriveKey();
-  if (!key) {
-    const e = new Error('Encrypted keystore requires KEYSTORE_SECRET');
-    e.status = 500; e.expose = false; throw e;
-  }
+function tryDec(str, secret) {
+  const key = deriveKey(secret);
+  if (!key) return null;
   const raw = Buffer.from(str.slice(6), 'base64');
   const iv = raw.subarray(0, 12);
   const tag = raw.subarray(12, 28);
@@ -109,6 +104,22 @@ function decMaybe(str) {
   decipher.setAuthTag(tag);
   const dec = Buffer.concat([decipher.update(enc), decipher.final()]);
   return dec.toString('utf8');
+}
+function decMaybe(str) {
+  if (!str) return null;
+  if (!str.startsWith('ENCv1:')) return str;
+  // Try current secret first
+  let dec = null;
+  try { dec = tryDec(str, process.env.KEYSTORE_SECRET); } catch { dec = null; }
+  if (dec !== null) return dec;
+  // Fallback to old secret (during rotation window)
+  const old = process.env.KEYSTORE_SECRET_OLD;
+  if (old && old.length >= 8) {
+    try { dec = tryDec(str, old); } catch { dec = null; }
+    if (dec !== null) return dec;
+  }
+  const e = new Error('Unable to decrypt keystore entry with provided secrets');
+  e.status = 500; e.expose = false; throw e;
 }
 function getPem(name) {
   const row = db.prepare('SELECT pem FROM keystore WHERE name=?').get(name);
@@ -274,6 +285,39 @@ exports.destroyCA = async () => {
       }
     }
   } catch (_) { /* ignore */ }
+};
+
+// Rotate all keystore entries from KEYSTORE_SECRET_OLD (or plaintext) to KEYSTORE_SECRET
+exports.rotateKeystoreSecret = async () => {
+  const newSecret = process.env.KEYSTORE_SECRET || '';
+  const oldSecret = process.env.KEYSTORE_SECRET_OLD || '';
+  if (!newSecret || newSecret.length < 8) {
+    const e = new Error('Rotation requires KEYSTORE_SECRET to be set (>= 8 chars).'); e.status = 400; e.expose = true; throw e;
+  }
+  const rows = db.prepare('SELECT name, pem FROM keystore').all();
+  let rotated = 0;
+  tx(() => {
+    for (const r of rows) {
+      const cur = r.pem || '';
+      let plain;
+      if (cur.startsWith('ENCv1:')) {
+        // Prefer old secret if provided; fallback to new (in case already partially rotated)
+        let dec = null;
+        if (oldSecret && oldSecret.length >= 8) { try { dec = tryDec(cur, oldSecret); } catch { dec = null; } }
+        if (dec === null) { try { dec = tryDec(cur, newSecret); } catch { dec = null; } }
+        if (dec === null) { const e = new Error(`Cannot decrypt keystore item ${r.name} with provided secrets`); e.status = 400; e.expose = true; throw e; }
+        plain = dec;
+      } else {
+        plain = cur; // plaintext
+      }
+      const reEnc = encMaybe(plain, newSecret);
+      if (reEnc !== cur) {
+        db.prepare('UPDATE keystore SET pem=? WHERE name=?').run(reEnc, r.name);
+        rotated++;
+      }
+    }
+  });
+  return { rotated, total: rows.length };
 };
 
 // Sign CSR into a leaf certificate
