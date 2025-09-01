@@ -30,14 +30,17 @@ function normTab(t) {
   t = String(t || '').toLowerCase();
   return TABS.includes(t) ? t : 'orders';
 }
+
 function normSort(tab, s) {
   s = String(s || '').toLowerCase();
   const map = SORTS[tab];
   return map && map[s] ? s : Object.keys(map)[0];
 }
+
 function normDir(d) {
   return String(d || '').toLowerCase() === 'asc' ? 'asc' : 'desc';
 }
+
 function pager(total, pageSize, page) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const curPage = Math.min(Math.max(1, page), totalPages);

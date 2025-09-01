@@ -17,7 +17,6 @@ const ALLOWED_SORT = {
   revoked_at: 'r.revoked_at'
 };
 
-// ----- TLS issuance -----
 exports.renderIssuePage = async (req, res, next) => {
   try {
     // Listing params (search/sort/pagination)
@@ -84,7 +83,6 @@ exports.renderIssuePage = async (req, res, next) => {
   } catch (e) { next(e); }
 };
 
-// JSON list for issued certs (used to refresh table without full reload)
 exports.listIssuedJson = async (req, res, next) => {
   try {
     const q = String(req.query.q || '').trim();
@@ -171,7 +169,6 @@ exports.issueCertificate = async (req, res, next) => {
   } catch (e) { next(e); }
 };
 
-// ----- S/MIME issuance -----
 exports.renderSmimePage = async (req, res, next) => {
   try {
     const smtpHost = (process.env.SMTP_HOST || '').trim();
@@ -245,7 +242,6 @@ exports.issueSmime = async (req, res, next) => {
   } catch (e) { next(e); }
 };
 
-// ----- Renewal -----
 exports.renderRenewPage = async (req, res, next) => {
   try {
     let certPemPrefill = '';
@@ -286,7 +282,6 @@ exports.renewCertificate = async (req, res, next) => {
   } catch (e) { next(e); }
 };
 
-// ----- Revocation -----
 exports.renderRevokePage = async (req, res, next) => {
   try { res.render('certs/revoke', { csrfToken: res.locals.csrfToken }); } catch (e) { next(e); }
 };
@@ -318,7 +313,6 @@ exports.revokeCertificate = async (req, res, next) => {
   } catch (e) { next(e); }
 };
 
-// ----- Helpers: fetch cert PEM by serial -----
 exports.getCertificateBySerial = async (req, res, next) => {
   try {
     const serial = String(req.params.serial || '').trim();
