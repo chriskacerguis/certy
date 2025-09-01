@@ -4,7 +4,7 @@
 
 - [ ] Date range filters and CSV/JSON export
 - [ ] Row “details” modal (pretty-printed JSON) and quick filters by user/IP
-- [ ] Retention setting (e.g., purge older than N days)
+- [x] Retention setting (env: AUDIT_RETENTION_DAYS, default 90)
 
 ## Security and hardening
 
@@ -16,7 +16,8 @@
 
 - [x] Backup/restore guide with exact files and minimal downtime steps
 - [ ] CLI/admin script for headless keystore rotation and CA destroy (even if ENABLE_CA_LIFECYCLE=false)
-- [ ] CRL publish: retry/backoff and “last published” status in UI
+- [ ] CRL publish: retry/backoff 
+- [ ] CRL “last published” status in UI
 
 ## Observability
 

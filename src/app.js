@@ -21,6 +21,7 @@ const adminRoutes = require('./routes/admin');
 const acmeRoutes = require('./routes/acme');
 const adminAcmeRoutes = require('./routes/adminAcme');
 const { withRequestContext } = require('./services/auditContext');
+const { startAuditRetentionJob } = require('./services/auditService');
 
 const app = express();
 
@@ -148,3 +149,6 @@ if (require.main === module) {
 }
 
 module.exports = app;
+
+// Kick off background jobs after module export to avoid test interference
+startAuditRetentionJob();

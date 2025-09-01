@@ -131,6 +131,7 @@ Set these in your shell or a `.env` file. Defaults are shown where applicable.
 	- SESSION_SECRET: Secret for session cookies. Default change_me (set a strong value in production).
 	- RATE_LIMIT_MAX: Requests per minute per IP. Default 120.
 	- AUTH_OPTIONAL: When true, bypasses auth if OIDC is not configured (useful for dev/tests). Default false.
+ 	- AUDIT_RETENTION_DAYS: Days to retain audit log entries; older entries are purged at startup and daily. Default 90.
 
 - Logging
 	- LOG_LEVEL: pino log level. Default debug in development, info in production.
