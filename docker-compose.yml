@@ -1,26 +1,52 @@
+networks:
+  certy:
+    external: false
+
 services:
 
-  # certy:
-  #   build: .
-  #   container_name: certy
-  #   env_file:
-  #     - .env
-  #   ports:
-  #     - "3000:3000"
-  #   depends_on:
-  #     - dev-oidc
-
-  dev-oidc:
-    image: ghcr.io/businesssimulations/dev-oidc-toolkit:latest
-    container_name: dev-oidc
-    ports:
-      - "8080:8080"
+  certy:
+    image: ghcr.io/chriskacerguis/certy:latest
+    restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      # Define a test user
-      - DevOidcToolkit__Users__0__Email=test@localhost
-      - DevOidcToolkit__Users__0__FirstName=Test
-      - DevOidcToolkit__Users__0__LastName=User
-      # Define a client for your Express app
-      - DevOidcToolkit__Clients__0__Id=client
-      - DevOidcToolkit__Clients__0__Secret=secret
-      - DevOidcToolkit__Clients__0__RedirectUris__0=http://localhost:3000/auth/callback
+      - VIRTUAL_HOST=certy.domain.com
+      - VIRTUAL_PORT=3000
+    volumes:
+      - certy_data:/app/.local-ca
+    depends_on:
+      - pocket-id
+    networks:
+      - certy
+
+  pocket-id:
+    image: ghcr.io/pocket-id/pocket-id:v1
+    restart: unless-stopped
+    volumes:
+      - "pocket_data:/app/data"
+    environment:
+      - VIRTUAL_HOST=oidc.domain.com
+      - VIRTUAL_PORT=1411
+      - APP_URL=https://your-pocket-id-domain.com
+      - TRUST_PROXY=false
+      - MAXMIND_LICENSE_KEY=
+      - PUID=1000
+      - PGID=1000
+    networks:
+      - certy
+
+  nginx-proxy:
+    image: jwilder/nginx-proxy:alpine
+    restart: unless-stopped
+    ports:
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - ./cert.pem:/etc/nginx/certs/domain.com.crt:ro
+      - ./key.des.pem:/etc/nginx/certs/domain.com.key:ro
+    networks:
+      - certy
+
+volumes:
+  certy_data:
+  pocket_data:
