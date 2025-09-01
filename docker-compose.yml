@@ -27,7 +27,7 @@ services:
     environment:
       - VIRTUAL_HOST=oidc.domain.com
       - VIRTUAL_PORT=1411
-      - APP_URL=https://your-pocket-id-domain.com
+      - APP_URL=https://oidc.domain.com
       - TRUST_PROXY=false
       - MAXMIND_LICENSE_KEY=
       - PUID=1000
