@@ -145,6 +145,8 @@ vite.config.ts.timestamp-*
 
 # app specific
 .local-ca/
+cert.pem
+key.pem
 
 # ignore .vscode
 .vscode/
