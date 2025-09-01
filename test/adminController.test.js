@@ -13,7 +13,6 @@ describe('adminController routes', () => {
   beforeEach(() => {
     process.env = {
       ...origEnv,
-      AUTH_OPTIONAL: 'true',
       MIGRATIONS_DIR: path.join(origCwd, 'src', 'migrations'),
       CA_ROOT_KEY_BITS: '1024',
       CA_INT_KEY_BITS: '1024'

@@ -1,6 +1,7 @@
 // src/services/stepCaService.js
 const fs = require('fs');
 const path = require('path');
+const cfg = require('../config');
 const crypto = require('node:crypto');
 const forge = require('node-forge');
 const net = require('node:net');
@@ -8,17 +9,17 @@ const { db, tx, getMeta, setMeta, allocateSerialHex, DB_PATH } = require('./db')
 
 const { pki, md, asn1 } = forge;
 
-const CA_DIR = process.env.LOCAL_CA_DIR || path.join(process.cwd(), '.local-ca');
+const CA_DIR = cfg.caDir;
 // legacy filesystem paths removed; keystore is SQLite-only
 
 // Legacy JSON migration removed; keystore is SQLite-only
 
-const ROOT_DAYS = parseInt(process.env.CA_ROOT_DAYS || '3650', 10);
-const INT_DAYS  = parseInt(process.env.CA_INT_DAYS  || '1825', 10);
-const LEAF_DAYS_DEFAULT = parseInt(process.env.CA_LEAF_DAYS || '90', 10);
+const ROOT_DAYS = parseInt(String(cfg.caRootDays), 10);
+const INT_DAYS  = parseInt(String(cfg.caIntDays), 10);
+const LEAF_DAYS_DEFAULT = parseInt(String(cfg.caLeafDays), 10);
 
-const ROOT_KEY_BITS = parseInt(process.env.CA_ROOT_KEY_BITS || '4096', 10);
-const INT_KEY_BITS  = parseInt(process.env.CA_INT_KEY_BITS  || '3072', 10);
+const ROOT_KEY_BITS = parseInt(String(cfg.caRootKeyBits), 10);
+const INT_KEY_BITS  = parseInt(String(cfg.caIntKeyBits), 10);
 const CRL_URL = (process.env.S3_CRL_PUBLIC_URL || '').trim();
 
 function ensureDirs() {

@@ -44,8 +44,7 @@
 <main id="main-content" class="container py-4" role="main">
   <% if (typeof authBypassed !== 'undefined' && authBypassed) { %>
   <div class="alert alert-warning" role="alert">
-      Authentication is <strong>disabled</strong> for development
-      (<code>AUTH_OPTIONAL=true</code> or OIDC not configured).
+      Authentication is <strong>disabled</strong> for development (OIDC not configured).
     </div>
   <% } %>
   <% if (Array.isArray(flashMessages) && flashMessages.length) { %>

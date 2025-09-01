@@ -27,7 +27,6 @@ router.get('/login', async (req, res, next) => {
           <ul class="mb-0">
             <li>Start your dev OIDC on <code>${process.env.OIDC_ISSUER || 'http://localhost:8080'}</code> and ensure it listens on <code>0.0.0.0</code>.</li>
             <li>If it runs in Docker, map the port (e.g., <code>- "8080:8080"</code>) and set <code>OIDC_ISSUER=http://localhost:8080</code> in this app.</li>
-            <li>For quick local dev, set <code>AUTH_OPTIONAL=true</code> to bypass login temporarily.</li>
           </ul>
         </div>
       </div>`

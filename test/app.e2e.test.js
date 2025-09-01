@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 function freshEnv(extra = {}) {
-  for (const k of ['LOCAL_CA_DIR','LOCAL_CA_DB','AUTH_OPTIONAL','ENABLE_CA_LIFECYCLE']) delete process.env[k];
+  for (const k of ['LOCAL_CA_DIR','LOCAL_CA_DB','ENABLE_CA_LIFECYCLE']) delete process.env[k];
   const TMP = path.join(process.cwd(), '.tmp-e2e');
   const CA_DIR = path.join(TMP, 'ca');
   const DB_PATH = path.join(CA_DIR, 'ca.db');
@@ -12,7 +12,6 @@ function freshEnv(extra = {}) {
   fs.mkdirSync(CA_DIR, { recursive: true });
   process.env.LOCAL_CA_DIR = CA_DIR;
   process.env.LOCAL_CA_DB = DB_PATH;
-  process.env.AUTH_OPTIONAL = 'true';
   process.env.ENABLE_CA_LIFECYCLE = 'true';
   process.env.MIGRATIONS_DIR = path.join(__dirname, '..', 'src', 'migrations');
   Object.assign(process.env, extra);
@@ -90,7 +89,7 @@ describe('App E2E routes', () => {
     await agent.get('/acme/directory').expect(404);
   });
 
-  test('Auth login bypass is active with AUTH_OPTIONAL=true', async () => {
+  test('Auth login bypass is active when OIDC is not configured', async () => {
     const app = newApp();
     const agent = request.agent(app);
     const home = await agent.get('/').expect(200);

@@ -2,6 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const Database = require('better-sqlite3');
+const appCfg = require('../config');
 
 // Derive DB locations with safe defaults. In tests, isolate DB per worker unless BOTH overrides are provided.
 const isTest = process.env.NODE_ENV === 'test' || !!process.env.JEST_WORKER_ID;
@@ -18,10 +19,10 @@ if (isTest) {
     DB_PATH = path.join(CA_DIR, 'ca.db');
   }
 } else {
-  CA_DIR = process.env.LOCAL_CA_DIR || path.join(process.cwd(), '.local-ca');
-  DB_PATH = process.env.LOCAL_CA_DB || path.join(CA_DIR, 'ca.db');
+  CA_DIR = appCfg.caDir;
+  DB_PATH = appCfg.caDbPath;
 }
-const MIGRATIONS_DIR = process.env.MIGRATIONS_DIR || path.join(process.cwd(), 'src', 'migrations');
+const MIGRATIONS_DIR = appCfg.migrationsDir;
 
 fs.mkdirSync(CA_DIR, { recursive: true, mode: 0o700 });
 fs.mkdirSync(MIGRATIONS_DIR, { recursive: true, mode: 0o700 });

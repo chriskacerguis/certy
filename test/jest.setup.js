@@ -2,6 +2,11 @@
 process.env.LOG_LEVEL = process.env.LOG_LEVEL || 'fatal';
 process.env.NODE_ENV = process.env.NODE_ENV || 'test';
 
+// Ensure auth is considered unconfigured in tests unless a test opts in
+for (const k of ['OIDC_ISSUER','OIDC_CLIENT_ID','OIDC_CLIENT_SECRET','OIDC_REDIRECT_URI']) {
+	if (process.env[k]) delete process.env[k];
+}
+
 // Longer timeout for key generation & E2E flows
 jest.setTimeout(60000);
 

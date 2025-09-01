@@ -129,13 +129,15 @@ After finalize, acme.sh will GET the cert from `/acme/cert/<orderId>` (the URL r
 
 Set these in your shell or a `.env` file. Defaults are shown where applicable.
 
+Tip: To keep things simple, only common settings are in `.env`. Advanced, rarely-changed defaults live in `src/config.defaults.js` and can be overridden via envs when needed.
+
 - Core/server
 	- PORT: Port to listen on. Default 3000.
 	- NODE_ENV: Node environment. Affects logging and cookie security. Default development.
 	- TRUST_PROXY: Set true when behind a reverse proxy/load balancer to enable secure cookies. Default false.
 	- SESSION_SECRET: Secret for session cookies. Default change_me (set a strong value in production).
 	- RATE_LIMIT_MAX: Requests per minute per IP. Default 120.
-	- AUTH_OPTIONAL: When true, bypasses auth if OIDC is not configured (useful for dev/tests). Default false.
+	# Auth bypass is no longer supported; when OIDC is not configured, routes are accessible for dev only.
  	- AUDIT_RETENTION_DAYS: Days to retain audit log entries; older entries are purged at startup and daily. Default 90.
 
 - Logging

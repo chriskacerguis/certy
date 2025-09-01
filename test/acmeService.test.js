@@ -10,7 +10,7 @@ describe('acmeService (API surface via routes)', () => {
   const TMP = path.join(process.cwd(), '.tmp-acme');
 
   beforeEach(() => {
-  process.env = { ...origEnv, AUTH_OPTIONAL: 'true', ACME_ENABLE: 'true', MIGRATIONS_DIR: path.join(origCwd, 'src', 'migrations') };
+  process.env = { ...origEnv, ACME_ENABLE: 'true', MIGRATIONS_DIR: path.join(origCwd, 'src', 'migrations') };
     if (fs.existsSync(TMP)) fs.rmSync(TMP, { recursive: true, force: true });
     fs.mkdirSync(TMP, { recursive: true });
     process.chdir(TMP);

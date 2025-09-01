@@ -1,4 +1,7 @@
-require('dotenv').config();
+// Load environment from .env in normal runs; skip in tests to keep isolation
+if (process.env.NODE_ENV !== 'test') {
+  require('dotenv').config();
+}
 const path = require('path');
 const express = require('express');
 const helmet = require('helmet');
@@ -10,6 +13,7 @@ const expressLayouts = require('express-ejs-layouts');
 const session = require('express-session');
 const { flashMiddleware } = require('./middleware/flash');
 const oidcService = require('./services/auth/oidc');
+const cfg = require('./config');
 
 const createHttpLogger = require('./middleware/httpLogger');
 const baseLogger = require('./logger');
@@ -71,7 +75,7 @@ app.use((req, res, next) => {
 app.use(withRequestContext);
 
 // Rate limit
-const limiter = rateLimit({ windowMs: 60 * 1000, max: parseInt(process.env.RATE_LIMIT_MAX || '120', 10) });
+const limiter = rateLimit({ windowMs: 60 * 1000, max: parseInt(cfg.rateLimitMax || 120, 10) });
 app.use(limiter);
 
 // CSRF: attach token shim and make token available in views
@@ -86,13 +90,11 @@ app.use((req, res, next) => {
   next();
 });
 
-// Simple guard for protected areas (optional: add roles)
-const AUTH_OPTIONAL = String(process.env.AUTH_OPTIONAL || 'false').toLowerCase() === 'true';
 function ensureAuth(req, res, next) {
   if (req.session?.user) return next();
 
-  // Dev convenience: bypass when AUTH_OPTIONAL=true or OIDC is not configured
-  if (AUTH_OPTIONAL || !oidcService.isConfigured()) {
+  // Dev convenience: bypass only when OIDC is not configured
+  if (!oidcService.isConfigured()) {
     res.locals.authBypassed = true;
     return next();
   }

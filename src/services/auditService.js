@@ -1,6 +1,7 @@
 const { db } = require('./db');
 const { getContext } = require('./auditContext');
 const logger = require('../logger');
+const cfg = require('../config');
 
 const redact = (obj) => {
   const clone = JSON.parse(JSON.stringify(obj || {}));
@@ -28,8 +29,8 @@ exports.event = (type, details = {}) => {
 // --- Retention purge (default 90 days) ---
 
 function getRetentionDays() {
-  const fromEnv = parseInt(process.env.AUDIT_RETENTION_DAYS || '', 10);
-  let days = Number.isFinite(fromEnv) && fromEnv > 0 ? fromEnv : 90;
+  const fromCfg = parseInt(String(cfg.auditRetentionDays || ''), 10);
+  let days = Number.isFinite(fromCfg) && fromCfg > 0 ? fromCfg : 90;
   if (days < 1) days = 1;
   if (days > 3650) days = 3650;
   return days;

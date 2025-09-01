@@ -4,7 +4,7 @@ function newApp({ stepMock = {}, crlMock = {}, env = {} } = {}) {
   jest.resetModules();
   // Default ENV to bypass auth and enable lifecycle
   const origEnv = process.env;
-  process.env = { ...origEnv, AUTH_OPTIONAL: 'true', ENABLE_CA_LIFECYCLE: 'true', ...env };
+  process.env = { ...origEnv, ENABLE_CA_LIFECYCLE: 'true', ...env };
 
   // Step service mock with sensible defaults
   const step = {

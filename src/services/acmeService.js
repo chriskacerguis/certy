@@ -3,8 +3,9 @@ const { calculateJwkThumbprint, importJWK, FlattenedSign, FlattenedVerify, decod
 const { db, tx } = require('./db');
 const step = require('./stepCaService');
 
+const cfg = require('../config');
 const ACME_ENABLE = String(process.env.ACME_ENABLE || 'false').toLowerCase() === 'true';
-const HTTP_TIMEOUT = parseInt(process.env.ACME_HTTP_VERIFY_TIMEOUT_MS || '5000', 10);
+const HTTP_TIMEOUT = parseInt(cfg.acmeHttpVerifyTimeoutMs || 5000, 10);
 
 /** ---------- Nonce store (in-memory) ---------- **/
 const nonces = new Map(); // nonce -> expiresAt

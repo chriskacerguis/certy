@@ -1,9 +1,9 @@
 const pinoHttp = require('pino-http');
+const cfg = require('../config');
 
-const SAMPLE_RATE = parseInt(process.env.HTTP_LOG_SAMPLE_RATE || '10', 10); // 1-in-10 successes
+const SAMPLE_RATE = parseInt(cfg.httpLogSampleRate || 10, 10);
 const IGNORE_PATHS = new Set(
-  (process.env.HTTP_LOG_IGNORE_PATHS || '/healthz,/favicon.ico,/public')
-    .split(',')
+  String(cfg.httpLogIgnorePaths || '').split(',')
     .map(s => s.trim())
     .filter(Boolean)
 );
