@@ -11,7 +11,12 @@ If you are running this in a homelab and aren't worried too much about security,
 - Run `cp .env.example .env`
 - Run `docker compose up -d`
 
-### Docker backup and restore
+## User Management
+
+Certy supports OIDC, and I do include a simple OIDC "testing" service, which I use in my homelab and for development.  If you want something more robust it will work with any OIDC provider, like Keycloak or CASdoor.  If you are looking for a lightweight one, I would suggest [Pocket ID](https://pocket-id.org/).
+
+
+## Docker backup and restore
 
 By default inside the container, data lives at `/app/.local-ca` (SQLite `ca.db` plus WAL/SHM). Mount this to a named volume or host directory for persistence.
 
