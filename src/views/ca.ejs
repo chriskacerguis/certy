@@ -117,6 +117,14 @@
       <div class="card-body d-flex flex-column">
         <h5 class="card-title">Certificate Revocation List (CRL)</h5>
         <p class="text-muted">Signed by the Intermediate CA. Generated on demand.</p>
+        <% if (typeof crlLastPublishedAt !== 'undefined' && crlLastPublishedAt) { %>
+          <div class="alert alert-info py-2">
+            <div class="small">Last published: <code><%= crlLastPublishedAt.replace('T',' ').replace('Z','') %></code></div>
+            <% if (typeof s3PublicUrl !== 'undefined' && s3PublicUrl) { %>
+              <div class="small">Public URL: <a href="<%= s3PublicUrl %>" target="_blank" rel="noopener"><%= s3PublicUrl %></a></div>
+            <% } %>
+          </div>
+        <% } %>
         <% if (typeof s3Enabled !== 'undefined' && s3Enabled) { %>
           <div class="small text-muted mb-3">
             <% if (typeof s3PublicUrl !== 'undefined' && s3PublicUrl) { %>

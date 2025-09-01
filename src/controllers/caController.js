@@ -2,7 +2,7 @@ const { validationResult } = require('express-validator');
 const step = require('../services/stepCaService');
 const audit = require('../services/auditService');
 const crlPublisher = require('../services/crlPublisher');
-const { db } = require('../services/db');
+const { db, getMeta, setMeta } = require('../services/db');
 
 exports.renderPage = async (req, res, next) => {
   try {
@@ -12,7 +12,8 @@ exports.renderPage = async (req, res, next) => {
     const s3PublicUrl = s3Enabled ? crlPublisher.derivePublicUrl() : '';
   const { DB_PATH, CA_DIR } = require('../services/db');
   const hasKeystoreSecretOld = String(process.env.KEYSTORE_SECRET_OLD || '').trim().length > 0;
-  res.render('ca', { csrfToken: req.csrfToken(), isInitialized, lifecycleEnabled, s3Enabled, s3PublicUrl, dbPath: DB_PATH, caDir: CA_DIR, migrateJson: String(process.env.MIGRATE_JSON||'false'), hasKeystoreSecretOld });
+  const crlLastPublishedAt = getMeta('crl_last_published_at');
+  res.render('ca', { csrfToken: req.csrfToken(), isInitialized, lifecycleEnabled, s3Enabled, s3PublicUrl, crlLastPublishedAt, dbPath: DB_PATH, caDir: CA_DIR, migrateJson: String(process.env.MIGRATE_JSON||'false'), hasKeystoreSecretOld });
   } catch (e) {
     next(e);
   }
@@ -119,6 +120,11 @@ exports.publishCRLToS3 = async (req, res, next) => {
     const crlPem = await step.generateCRLPEM();
     const out = await crlPublisher.publishCRL(crlPem);
     audit.event('PUBLISH_CRL_S3', { bucket: out.bucket, key: out.key, etag: out.etag });
+    try {
+      setMeta('crl_last_published_at', new Date().toISOString());
+      if (out?.url) setMeta('crl_last_published_url', out.url);
+      if (out?.etag) setMeta('crl_last_published_etag', out.etag);
+    } catch (_) { /* ignore meta errors */ }
     res.render('layout', {
       body: `
       <div class="alert alert-success">
