@@ -60,7 +60,7 @@ exports.listCerts = (req, res, next) => {
     const end = Math.min(totalPages, curPage + win);
     for (let i = start; i <= end; i++) pages.push(i);
 
-    res.render('admin-certs', {
+  res.render('admin/certs', {
       csrfToken: req.csrfToken(),
       rows,
       total,

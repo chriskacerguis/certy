@@ -47,7 +47,7 @@
   <div class="col">
     <button class="btn btn-primary" type="submit">Apply</button>
   </div>
-</form>
+  </form>
 
 <div class="table-responsive">
   <table class="table table-sm table-striped align-middle">
@@ -88,14 +88,21 @@
       <% } %>
     </tbody>
   </table>
-</div>
+  </div>
 
+<% const base = `/admin/audit?pageSize=${pageSize}&sortBy=${sortBy}&sortDir=${sortDir}&q=${qEnc}&type=${encodeURIComponent(type||'')}&user=${encodeURIComponent(userQ||'')}&ip=${encodeURIComponent(ip||'')}`; %>
 <nav aria-label="Audit log pages">
   <ul class="pagination">
+    <li class="page-item <%= page===1?'disabled':'' %>">
+      <a class="page-link" href="<%= page===1 ? '#' : base + '&page=' + (page-1) %>" <%= page===1 ? 'aria-disabled="true" tabindex="-1"' : '' %>>Prev</a>
+    </li>
     <% pages.forEach(p => { %>
-      <li class="page-item <%= p === page ? 'active' : '' %>">
-  <a class="page-link" href="/admin/audit?page=<%= p %>&pageSize=<%= pageSize %>&sortBy=<%= sortBy %>&sortDir=<%= sortDir %>&q=<%= qEnc %>&type=<%= encodeURIComponent(type||'') %>&user=<%= encodeURIComponent((userQ||'')) %>&ip=<%= encodeURIComponent(ip||'') %>" <%= p===page ? 'aria-current="page"' : '' %>><%= p %></a>
+      <li class="page-item <%= p===page?'active':'' %>">
+        <a class="page-link" href="<%= base + '&page=' + p %>" <%= p===page ? 'aria-current="page"' : '' %>><%= p %></a>
       </li>
     <% }) %>
+    <li class="page-item <%= page===totalPages?'disabled':'' %>">
+      <a class="page-link" href="<%= page===totalPages ? '#' : base + '&page=' + (page+1) %>" <%= page===totalPages ? 'aria-disabled="true" tabindex="-1"' : '' %>>Next</a>
+    </li>
   </ul>
 </nav>

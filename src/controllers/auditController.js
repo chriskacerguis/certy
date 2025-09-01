@@ -69,7 +69,7 @@ exports.listAudit = (req, res, next) => {
     const end = Math.min(totalPages, curPage + win);
     for (let i = start; i <= end; i++) pages.push(i);
 
-    res.render('admin-audit', {
+  res.render('admin/audit', {
       csrfToken: req.csrfToken(),
       rows,
       total,

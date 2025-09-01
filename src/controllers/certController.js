@@ -68,7 +68,7 @@ exports.renderIssuePage = async (req, res, next) => {
     const end = Math.min(totalPages, curPage + win);
     for (let i = start; i <= end; i++) pages.push(i);
 
-    res.render('cert', {
+  res.render('certs/issue', {
       csrfToken: res.locals.csrfToken,
       rows,
       total,
@@ -176,7 +176,7 @@ exports.renderSmimePage = async (req, res, next) => {
   try {
     const smtpHost = (process.env.SMTP_HOST || '').trim();
     const smtpConfigured = smtpHost.length > 0;
-  res.render('smime', { csrfToken: res.locals.csrfToken, smtpConfigured });
+  res.render('certs/smime', { csrfToken: res.locals.csrfToken, smtpConfigured });
   } catch (e) { next(e); }
 };
 
@@ -262,7 +262,7 @@ exports.renderRenewPage = async (req, res, next) => {
         if (latest && latest.cert_pem) certPemPrefill = latest.cert_pem;
       }
     }
-    res.render('renew', { csrfToken: res.locals.csrfToken, certPemPrefill, keyPemPrefill, serial });
+  res.render('certs/renew', { csrfToken: res.locals.csrfToken, certPemPrefill, keyPemPrefill, serial });
   } catch (e) { next(e); }
 };
 
@@ -288,7 +288,7 @@ exports.renewCertificate = async (req, res, next) => {
 
 // ----- Revocation -----
 exports.renderRevokePage = async (req, res, next) => {
-  try { res.render('revoke', { csrfToken: res.locals.csrfToken }); } catch (e) { next(e); }
+  try { res.render('certs/revoke', { csrfToken: res.locals.csrfToken }); } catch (e) { next(e); }
 };
 
 exports.revokeCertificate = async (req, res, next) => {

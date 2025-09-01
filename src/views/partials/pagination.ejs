@@ -1,0 +1,19 @@
+<% if (Array.isArray(pages) && pages.length > 0 && page && totalPages) { %>
+<nav aria-label="<%= ariaLabel || 'Pages' %>">
+  <ul class="pagination" role="list">
+    <li class="page-item <%= page===1 ? 'disabled' : '' %>">
+      <a class="page-link" href="<%= page===1 ? '#' : base + '&page=' + (page-1) %>" <%= page===1 ? 'aria-disabled="true" tabindex="-1"' : '' %>>Prev</a>
+    </li>
+
+    <% pages.forEach(p => { %>
+      <li class="page-item <%= p===page ? 'active' : '' %>">
+        <a class="page-link" href="<%= base + '&page=' + p %>" <%= p===page ? 'aria-current="page"' : '' %>><%= p %></a>
+      </li>
+    <% }) %>
+
+    <li class="page-item <%= page===totalPages ? 'disabled' : '' %>">
+      <a class="page-link" href="<%= page===totalPages ? '#' : base + '&page=' + (page+1) %>" <%= page===totalPages ? 'aria-disabled="true" tabindex="-1"' : '' %>>Next</a>
+    </li>
+  </ul>
+</nav>
+<% } %>

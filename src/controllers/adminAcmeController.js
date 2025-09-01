@@ -96,7 +96,7 @@ exports.list = (req, res, next) => {
          LIMIT @limit OFFSET @offset`
       ).all({ like, limit: pageSize, offset });
 
-      return res.render('admin-acme', {
+  return res.render('admin/acme', {
         csrfToken: req.csrfToken(),
         tab, counts, rows, total,
         page: curPage, pageSize,
@@ -122,7 +122,7 @@ exports.list = (req, res, next) => {
          LIMIT @limit OFFSET @offset`
       ).all({ like, limit: pageSize, offset });
 
-      return res.render('admin-acme', {
+  return res.render('admin/acme', {
         csrfToken: req.csrfToken(),
         tab, counts, rows, total,
         page: curPage, pageSize,
@@ -158,7 +158,7 @@ exports.list = (req, res, next) => {
          LIMIT @limit OFFSET @offset`
       ).all({ like, limit: pageSize, offset });
 
-      return res.render('admin-acme', {
+  return res.render('admin/acme', {
         csrfToken: req.csrfToken(),
         tab, counts, rows, total,
         page: curPage, pageSize,
@@ -197,7 +197,7 @@ exports.list = (req, res, next) => {
        LIMIT @limit OFFSET @offset`
     ).all({ like, limit: pageSize, offset });
 
-    return res.render('admin-acme', {
+  return res.render('admin/acme', {
       csrfToken: req.csrfToken(),
       tab, counts, rows, total,
       page: curPage, pageSize,
