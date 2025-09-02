@@ -7,6 +7,10 @@ for (const k of ['OIDC_ISSUER','OIDC_CLIENT_ID','OIDC_CLIENT_SECRET','OIDC_REDIR
 	if (process.env[k]) delete process.env[k];
 }
 
+// Use smaller CA key sizes in tests to speed RSA key generation unless explicitly overridden
+if (!process.env.CA_ROOT_KEY_BITS) process.env.CA_ROOT_KEY_BITS = '2048';
+if (!process.env.CA_INT_KEY_BITS) process.env.CA_INT_KEY_BITS = '2048';
+
 // Longer timeout for key generation & E2E flows
 jest.setTimeout(60000);
 

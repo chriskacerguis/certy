@@ -28,8 +28,16 @@ fs.mkdirSync(CA_DIR, { recursive: true, mode: 0o700 });
 fs.mkdirSync(MIGRATIONS_DIR, { recursive: true, mode: 0o700 });
 
 const db = new Database(DB_PATH);
-db.pragma('journal_mode = WAL');
-db.pragma('synchronous = NORMAL');
+// Use faster pragmas in tests
+if (isTest) {
+  db.pragma('journal_mode = MEMORY');
+  db.pragma('synchronous = OFF');
+  db.pragma('temp_store = MEMORY');
+  db.pragma('cache_size = -16000'); // ~16MB page cache
+} else {
+  db.pragma('journal_mode = WAL');
+  db.pragma('synchronous = NORMAL');
+}
 
 function tx(fn) {
   const wrapped = db.transaction(fn);
