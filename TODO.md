@@ -18,6 +18,7 @@
 - [ ] CLI/admin script for headless keystore rotation and CA destroy (even if ENABLE_CA_LIFECYCLE=false)
 - [ ] CRL publish: retry/backoff 
 - [x] CRL “last published” status in UI
+- [ ] Support more backend databases (use Knex.js)
 
 ## Observability
 

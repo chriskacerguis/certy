@@ -26,8 +26,6 @@ exports.event = (type, details = {}) => {
   } catch { /* noop */ }
 };
 
-// --- Retention purge (default 90 days) ---
-
 function getRetentionDays() {
   const fromCfg = parseInt(String(cfg.auditRetentionDays || ''), 10);
   let days = Number.isFinite(fromCfg) && fromCfg > 0 ? fromCfg : 90;

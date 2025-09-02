@@ -2,12 +2,11 @@
 const fs = require('fs');
 const path = require('path');
 const cfg = require('../config');
-const crypto = require('node:crypto');
-const forge = require('node-forge');
 const net = require('node:net');
 const { db, tx, getMeta, setMeta, allocateSerialHex, DB_PATH } = require('./db');
-
-const { pki, md, asn1 } = forge;
+const { pki, md } = require('./ca/certHelpers');
+const { nodeKeyPairToPEM, subjectKeyIdentifier } = require('./ca/cryptoHelpers');
+const { subjectAttrs, parseSubjectCN, sansToJson, crlDistributionPointsExt } = require('./ca/certHelpers');
 
 const CA_DIR = cfg.caDir;
 // legacy filesystem paths removed; keystore is SQLite-only
@@ -29,23 +28,6 @@ function ensureDirs() {
 
 function expose(status, message) { const e = new Error(message); e.status = status; e.expose = true; return e; }
 
-function nodeKeyPairToPEM(alg, bits) {
-  if (alg === 'EC') {
-    const { publicKey, privateKey } = crypto.generateKeyPairSync('ec', {
-      namedCurve: 'P-256',
-      publicKeyEncoding: { type: 'spki', format: 'pem' },
-      privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
-    });
-    return { publicKeyPem: publicKey, privateKeyPem: privateKey };
-  } else {
-    const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
-      modulusLength: bits,
-      publicKeyEncoding: { type: 'pkcs1', format: 'pem' },
-      privateKeyEncoding: { type: 'pkcs1', format: 'pem' },
-    });
-    return { publicKeyPem: publicKey, privateKeyPem: privateKey };
-  }
-}
 
 function nowPlusDays(days) {
   const nb = new Date(Date.now() - 60_000);
@@ -53,83 +35,10 @@ function nowPlusDays(days) {
   return { notBefore: nb, notAfter: na };
 }
 
-function subjectAttrs(commonName) {
-  return [{ name: 'commonName', value: commonName }];
-}
+function crlExtMaybe() { return crlDistributionPointsExt(CRL_URL); }
 
-function subjectKeyIdentifier(pubKey) {
-  const spki = pki.publicKeyToAsn1(pubKey);
-  const der = asn1.toDer(spki).getBytes();
-  const hash = forge.md.sha1.create();    // RFC7093 method 1
-  hash.update(der);
-  return hash.digest().getBytes();
-}
-
-function crlDistributionPointsExt() {
-  if (!CRL_URL) return null;
-  // Forge supports cRLDistributionPoints with distributionPoints -> fullName -> GeneralName[]
-  return {
-    name: 'cRLDistributionPoints',
-    distributionPoints: [
-      {
-        fullName: [ { type: 6, value: CRL_URL } ] // type 6 = uniformResourceIdentifier
-      }
-    ]
-  };
-}
-
-// ----- SQLite keystore helpers (with optional encryption and rotation support) -----
-function deriveKey(secret) {
-  const s = (secret ?? process.env.KEYSTORE_SECRET) || '';
-  if (!s || s.length < 8) return null; // disabled or too weak
-  return crypto.createHash('sha256').update(s, 'utf8').digest();
-}
-function encMaybe(pem, secret) {
-  const key = deriveKey(secret);
-  if (!key) return pem;
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
-  const enc = Buffer.concat([cipher.update(pem, 'utf8'), cipher.final()]);
-  const tag = cipher.getAuthTag();
-  const payload = Buffer.concat([iv, tag, enc]).toString('base64');
-  return 'ENCv1:' + payload;
-}
-function tryDec(str, secret) {
-  const key = deriveKey(secret);
-  if (!key) return null;
-  const raw = Buffer.from(str.slice(6), 'base64');
-  const iv = raw.subarray(0, 12);
-  const tag = raw.subarray(12, 28);
-  const enc = raw.subarray(28);
-  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
-  decipher.setAuthTag(tag);
-  const dec = Buffer.concat([decipher.update(enc), decipher.final()]);
-  return dec.toString('utf8');
-}
-function decMaybe(str) {
-  if (!str) return null;
-  if (!str.startsWith('ENCv1:')) return str;
-  // Try current secret first
-  let dec = null;
-  try { dec = tryDec(str, process.env.KEYSTORE_SECRET); } catch { dec = null; }
-  if (dec !== null) return dec;
-  // Fallback to old secret (during rotation window)
-  const old = process.env.KEYSTORE_SECRET_OLD;
-  if (old && old.length >= 8) {
-    try { dec = tryDec(str, old); } catch { dec = null; }
-    if (dec !== null) return dec;
-  }
-  const e = new Error('Unable to decrypt keystore entry with provided secrets');
-  e.status = 500; e.expose = false; throw e;
-}
-function getPem(name) {
-  const row = db.prepare('SELECT pem FROM keystore WHERE name=?').get(name);
-  return row ? decMaybe(row.pem) : null;
-}
-function setPem(name, pem) {
-  const val = encMaybe(pem);
-  db.prepare(`INSERT INTO keystore(name, pem) VALUES(?, ?) ON CONFLICT(name) DO UPDATE SET pem=excluded.pem`).run(name, val);
-}
+// ----- SQLite keystore helpers (with optional encryption) -----
+const { getPem, setPem, tryDec, encMaybe } = require('./ca/keystore');
 
 function loadRoot() {
   // Prefer DB; fallback to legacy files (one-time migration handled elsewhere)
@@ -146,20 +55,7 @@ function loadIntermediate() {
   return { cert: pki.certificateFromPem(certPem), key: pki.privateKeyFromPem(keyPem), pem: certPem };
 }
 
-function parseSubjectCN(certOrAttrs) {
-  const attrs = Array.isArray(certOrAttrs) ? certOrAttrs : certOrAttrs.subject.attributes;
-  const cn = attrs.find(a => a.shortName === 'CN' || a.name === 'commonName');
-  return cn ? cn.value : '';
-}
-
-function sansToJson(altNames) {
-  return (altNames || []).map(a => {
-    if (a.type === 1) return { type: 'email', value: a.value };
-    if (a.type === 2) return { type: 'dns', value: a.value };
-    if (a.type === 7) return { type: 'ip', value: a.ip };
-    return { type: 'other' };
-  });
-}
+// parseSubjectCN, sansToJson imported from helper
 
 // Legacy migrations removed
 
@@ -233,7 +129,7 @@ exports.initCA = async ({ name, dns }) => {
     { name: 'subjectKeyIdentifier' },
   { name: 'authorityKeyIdentifier', keyIdentifier: subjectKeyIdentifier(rootPub) },
   // If configured, advertise CRL URL for this issuer (intermediate)
-  ...(crlDistributionPointsExt() ? [crlDistributionPointsExt()] : [])
+  ...(crlExtMaybe() ? [crlExtMaybe()] : [])
   ]);
   intCert.sign(rootPriv, md.sha256.create());
 
@@ -358,7 +254,7 @@ exports.signCsr = async ({ csrPem, subject, sans = [], notAfterDays = LEAF_DAYS_
     { name: 'extKeyUsage', serverAuth: true, clientAuth: true, emailProtection: true },
     { name: 'subjectKeyIdentifier' },
   { name: 'authorityKeyIdentifier', keyIdentifier: subjectKeyIdentifier(ca.cert.publicKey) },
-  ...(crlDistributionPointsExt() ? [crlDistributionPointsExt()] : [])
+  ...(crlExtMaybe() ? [crlExtMaybe()] : [])
   ];
   if (altNames.length) exts.push({ name: 'subjectAltName', altNames });
   cert.setExtensions(exts);
@@ -418,7 +314,7 @@ exports.renewWithMTLS = async ({ certPem, keyPem }) => {
     { name: 'extKeyUsage', serverAuth: true, clientAuth: true, emailProtection: true },
     { name: 'subjectKeyIdentifier' },
   { name: 'authorityKeyIdentifier', keyIdentifier: subjectKeyIdentifier(ca.cert.publicKey) },
-  ...(crlDistributionPointsExt() ? [crlDistributionPointsExt()] : [])
+  ...(crlExtMaybe() ? [crlExtMaybe()] : [])
   ];
   if (oldSan.length) exts.push({ name: 'subjectAltName', altNames: oldSan });
   cert.setExtensions(exts);
