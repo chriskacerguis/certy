@@ -1,11 +1,11 @@
 // src/services/db.js
-const fs = require('fs');
-const path = require('path');
-const Database = require('better-sqlite3');
-const appCfg = require('../config');
+const fs = require("fs");
+const path = require("path");
+const Database = require("better-sqlite3");
+const appCfg = require("../config");
 
 // Derive DB locations with safe defaults. In tests, isolate DB per worker unless BOTH overrides are provided.
-const isTest = process.env.NODE_ENV === 'test' || !!process.env.JEST_WORKER_ID;
+const isTest = process.env.NODE_ENV === "test" || !!process.env.JEST_WORKER_ID;
 let CA_DIR;
 let DB_PATH;
 
@@ -14,9 +14,9 @@ if (isTest) {
     CA_DIR = process.env.LOCAL_CA_DIR;
     DB_PATH = process.env.LOCAL_CA_DB;
   } else {
-    const worker = process.env.JEST_WORKER_ID || '1';
-    CA_DIR = path.join(process.cwd(), '.tmp-test', `worker-${worker}`, 'ca');
-    DB_PATH = path.join(CA_DIR, 'ca.db');
+    const worker = process.env.JEST_WORKER_ID || "1";
+    CA_DIR = path.join(process.cwd(), ".tmp-test", `worker-${worker}`, "ca");
+    DB_PATH = path.join(CA_DIR, "ca.db");
   }
 } else {
   CA_DIR = appCfg.caDir;
@@ -30,13 +30,13 @@ fs.mkdirSync(MIGRATIONS_DIR, { recursive: true, mode: 0o700 });
 const db = new Database(DB_PATH);
 // Use faster pragmas in tests
 if (isTest) {
-  db.pragma('journal_mode = MEMORY');
-  db.pragma('synchronous = OFF');
-  db.pragma('temp_store = MEMORY');
-  db.pragma('cache_size = -16000'); // ~16MB page cache
+  db.pragma("journal_mode = MEMORY");
+  db.pragma("synchronous = OFF");
+  db.pragma("temp_store = MEMORY");
+  db.pragma("cache_size = -16000"); // ~16MB page cache
 } else {
-  db.pragma('journal_mode = WAL');
-  db.pragma('synchronous = NORMAL');
+  db.pragma("journal_mode = WAL");
+  db.pragma("synchronous = NORMAL");
 }
 
 function tx(fn) {
@@ -54,15 +54,16 @@ function ensureMigrationsTable() {
 }
 
 function listMigrationFiles() {
-  const files = fs.readdirSync(MIGRATIONS_DIR)
-    .filter(f => /^\d+_.+\.(sql|js)$/.test(f))
+  const files = fs
+    .readdirSync(MIGRATIONS_DIR)
+    .filter((f) => /^\d+_.+\.(sql|js)$/.test(f))
     .sort((a, b) => a.localeCompare(b)); // numeric prefix ordering
   return files;
 }
 
 function alreadyAppliedSet() {
-  const rows = db.prepare('SELECT name FROM schema_migrations').all();
-  return new Set(rows.map(r => r.name));
+  const rows = db.prepare("SELECT name FROM schema_migrations").all();
+  return new Set(rows.map((r) => r.name));
 }
 
 function runMigrations() {
@@ -78,23 +79,25 @@ function runMigrations() {
 
     try {
       tx(() => {
-        if (ext === '.sql') {
-          const sql = fs.readFileSync(full, 'utf8');
+        if (ext === ".sql") {
+          const sql = fs.readFileSync(full, "utf8");
           db.exec(sql);
-        } else if (ext === '.js') {
+        } else if (ext === ".js") {
           const mod = require(full);
-          if (!mod || typeof mod.up !== 'function') {
-            throw new Error('JS migration must export an up(db) function');
+          if (!mod || typeof mod.up !== "function") {
+            throw new Error("JS migration must export an up(db) function");
           }
           mod.up(db);
         } else {
           throw new Error(`Unsupported migration extension: ${ext}`);
         }
-        db.prepare('INSERT INTO schema_migrations(name, applied_at) VALUES (?, ?)')
-          .run(name, new Date().toISOString());
+        db.prepare(
+          "INSERT INTO schema_migrations(name, applied_at) VALUES (?, ?)",
+        ).run(name, new Date().toISOString());
       });
       // eslint-disable-next-line no-console
-      if ((process.env.LOG_LEVEL || 'info') === 'debug') console.log(`[migrate] applied ${name}`);
+      if ((process.env.LOG_LEVEL || "info") === "debug")
+        console.log(`[migrate] applied ${name}`);
     } catch (e) {
       e.message = `Migration failed (${name}): ` + e.message;
       throw e;
@@ -107,25 +110,37 @@ runMigrations();
 /* ---- Public helpers (unchanged API) ---- */
 
 function getMeta(key) {
-  const row = db.prepare('SELECT value FROM meta WHERE key=?').get(key);
+  const row = db.prepare("SELECT value FROM meta WHERE key=?").get(key);
   return row ? row.value : null;
 }
 
 function setMeta(key, value) {
-  db.prepare(`
+  db.prepare(
+    `
     INSERT INTO meta(key,value) VALUES(?,?)
     ON CONFLICT(key) DO UPDATE SET value=excluded.value
-  `).run(key, value);
+  `,
+  ).run(key, value);
 }
 
 function allocateSerialHex() {
   return tx(() => {
-    const row = db.prepare('SELECT value FROM meta WHERE key=?').get('next_serial');
+    const row = db
+      .prepare("SELECT value FROM meta WHERE key=?")
+      .get("next_serial");
     const n = row ? BigInt(row.value) : 1000n;
     const hex = n.toString(16);
-    setMeta('next_serial', (n + 1n).toString());
+    setMeta("next_serial", (n + 1n).toString());
     return hex;
   });
 }
 
-module.exports = { db, tx, getMeta, setMeta, allocateSerialHex, DB_PATH, CA_DIR };
+module.exports = {
+  db,
+  tx,
+  getMeta,
+  setMeta,
+  allocateSerialHex,
+  DB_PATH,
+  CA_DIR,
+};

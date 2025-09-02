@@ -1,11 +1,16 @@
 // src/utils/csr.js
-const forge = require('node-forge');
-const crypto = require('node:crypto');
-const net = require('node:net');
+const forge = require("node-forge");
+const crypto = require("node:crypto");
+const net = require("node:net");
 
 const { pki, md } = forge;
 
-exports.generateKeyAndCsr = async ({ commonName, emails = [], dns = [], keyType = 'EC' }) => {
+exports.generateKeyAndCsr = async ({
+  commonName,
+  emails = [],
+  dns = [],
+  keyType = "EC",
+}) => {
   const { publicKeyPem, privateKeyPem } = generateKeyPairPEM(keyType);
 
   const publicKey = pki.publicKeyFromPem(publicKeyPem);
@@ -13,7 +18,7 @@ exports.generateKeyAndCsr = async ({ commonName, emails = [], dns = [], keyType 
 
   const csr = pki.createCertificationRequest();
   csr.publicKey = publicKey;
-  csr.setSubject([{ name: 'commonName', value: commonName }]);
+  csr.setSubject([{ name: "commonName", value: commonName }]);
 
   const altNames = [];
   for (const e of emails.filter(Boolean)) altNames.push({ type: 1, value: e });
@@ -22,7 +27,11 @@ exports.generateKeyAndCsr = async ({ commonName, emails = [], dns = [], keyType 
     else altNames.push({ type: 2, value: name });
   }
   const attrs = [];
-  if (altNames.length) attrs.push({ name: 'extensionRequest', extensions: [{ name: 'subjectAltName', altNames }] });
+  if (altNames.length)
+    attrs.push({
+      name: "extensionRequest",
+      extensions: [{ name: "subjectAltName", altNames }],
+    });
   csr.setAttributes(attrs);
 
   csr.sign(privateKey, md.sha256.create());
@@ -32,19 +41,19 @@ exports.generateKeyAndCsr = async ({ commonName, emails = [], dns = [], keyType 
 };
 
 function generateKeyPairPEM(keyType) {
-  const t = String(keyType || 'EC').toUpperCase();
-  if (t === 'RSA') {
-    const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
+  const t = String(keyType || "EC").toUpperCase();
+  if (t === "RSA") {
+    const { publicKey, privateKey } = crypto.generateKeyPairSync("rsa", {
       modulusLength: 2048,
-      publicKeyEncoding: { type: 'pkcs1', format: 'pem' },
-      privateKeyEncoding: { type: 'pkcs1', format: 'pem' },
+      publicKeyEncoding: { type: "pkcs1", format: "pem" },
+      privateKeyEncoding: { type: "pkcs1", format: "pem" },
     });
     return { publicKeyPem: publicKey, privateKeyPem: privateKey };
   }
-  const { publicKey, privateKey } = crypto.generateKeyPairSync('ec', {
-    namedCurve: 'P-256',
-    publicKeyEncoding: { type: 'spki', format: 'pem' },
-    privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+  const { publicKey, privateKey } = crypto.generateKeyPairSync("ec", {
+    namedCurve: "P-256",
+    publicKeyEncoding: { type: "spki", format: "pem" },
+    privateKeyEncoding: { type: "pkcs8", format: "pem" },
   });
   return { publicKeyPem: publicKey, privateKeyPem: privateKey };
 }

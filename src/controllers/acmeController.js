@@ -1,9 +1,10 @@
 // src/controllers/acmeController.js
-const acme = require('../services/acmeService');
+const acme = require("../services/acmeService");
 
 exports.directory = (req, res) => {
-  if (!acme.ACME_ENABLE) return res.status(404).json({ error: 'ACME disabled' });
-  res.set('Replay-Nonce', acme.issueNonce());
+  if (!acme.ACME_ENABLE)
+    return res.status(404).json({ error: "ACME disabled" });
+  res.set("Replay-Nonce", acme.issueNonce());
   res.json(acme.directory(req));
 };
 
@@ -24,7 +25,11 @@ exports.newOrder = (req, res, next) => {
 
 exports.getAuthz = (req, res, next) => {
   if (!acme.ACME_ENABLE) return res.status(404).end();
-  try { acme.getAuthz(req, res); } catch (e) { next(e); }
+  try {
+    acme.getAuthz(req, res);
+  } catch (e) {
+    next(e);
+  }
 };
 
 exports.postChallenge = (req, res, next) => {

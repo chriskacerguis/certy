@@ -1,3 +1,3 @@
-require('./db'); // importing db.js runs migrations
+require("./db"); // importing db.js runs migrations
 // eslint-disable-next-line no-console
-console.log('Migrations applied.');
+console.log("Migrations applied.");

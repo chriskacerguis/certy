@@ -3,7 +3,6 @@ networks:
     external: false
 
 services:
-
   certy:
     image: ghcr.io/chriskacerguis/certy:latest
     restart: unless-stopped

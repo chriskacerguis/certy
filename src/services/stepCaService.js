@@ -1,12 +1,27 @@
 // src/services/stepCaService.js
-const fs = require('fs');
-const path = require('path');
-const cfg = require('../config');
-const net = require('node:net');
-const { db, tx, getMeta, setMeta, allocateSerialHex, DB_PATH } = require('./db');
-const { pki, md } = require('./ca/certHelpers');
-const { nodeKeyPairToPEM, subjectKeyIdentifier } = require('./ca/cryptoHelpers');
-const { subjectAttrs, parseSubjectCN, sansToJson, crlDistributionPointsExt } = require('./ca/certHelpers');
+const fs = require("fs");
+const path = require("path");
+const cfg = require("../config");
+const net = require("node:net");
+const {
+  db,
+  tx,
+  getMeta,
+  setMeta,
+  allocateSerialHex,
+  DB_PATH,
+} = require("./db");
+const { pki, md } = require("./ca/certHelpers");
+const {
+  nodeKeyPairToPEM,
+  subjectKeyIdentifier,
+} = require("./ca/cryptoHelpers");
+const {
+  subjectAttrs,
+  parseSubjectCN,
+  sansToJson,
+  crlDistributionPointsExt,
+} = require("./ca/certHelpers");
 
 const CA_DIR = cfg.caDir;
 // legacy filesystem paths removed; keystore is SQLite-only
@@ -14,20 +29,25 @@ const CA_DIR = cfg.caDir;
 // Legacy JSON migration removed; keystore is SQLite-only
 
 const ROOT_DAYS = parseInt(String(cfg.caRootDays), 10);
-const INT_DAYS  = parseInt(String(cfg.caIntDays), 10);
+const INT_DAYS = parseInt(String(cfg.caIntDays), 10);
 const LEAF_DAYS_DEFAULT = parseInt(String(cfg.caLeafDays), 10);
 
 const ROOT_KEY_BITS = parseInt(String(cfg.caRootKeyBits), 10);
-const INT_KEY_BITS  = parseInt(String(cfg.caIntKeyBits), 10);
-const CRL_URL = (process.env.S3_CRL_PUBLIC_URL || '').trim();
+const INT_KEY_BITS = parseInt(String(cfg.caIntKeyBits), 10);
+const CRL_URL = (process.env.S3_CRL_PUBLIC_URL || "").trim();
 
 function ensureDirs() {
   // Ensure base CA directory for DB and logs
-  if (!fs.existsSync(CA_DIR)) fs.mkdirSync(CA_DIR, { recursive: true, mode: 0o700 });
+  if (!fs.existsSync(CA_DIR))
+    fs.mkdirSync(CA_DIR, { recursive: true, mode: 0o700 });
 }
 
-function expose(status, message) { const e = new Error(message); e.status = status; e.expose = true; return e; }
-
+function expose(status, message) {
+  const e = new Error(message);
+  e.status = status;
+  e.expose = true;
+  return e;
+}
 
 function nowPlusDays(days) {
   const nb = new Date(Date.now() - 60_000);
@@ -35,24 +55,34 @@ function nowPlusDays(days) {
   return { notBefore: nb, notAfter: na };
 }
 
-function crlExtMaybe() { return crlDistributionPointsExt(CRL_URL); }
+function crlExtMaybe() {
+  return crlDistributionPointsExt(CRL_URL);
+}
 
 // ----- SQLite keystore helpers (with optional encryption) -----
-const { getPem, setPem, tryDec, encMaybe } = require('./ca/keystore');
+const { getPem, setPem, tryDec, encMaybe } = require("./ca/keystore");
 
 function loadRoot() {
   // Prefer DB; fallback to legacy files (one-time migration handled elsewhere)
-  const certPem = getPem('root_cert_pem');
-  const keyPem  = getPem('root_key_pem');
+  const certPem = getPem("root_cert_pem");
+  const keyPem = getPem("root_key_pem");
   if (!certPem || !keyPem) return null;
-  return { cert: pki.certificateFromPem(certPem), key: pki.privateKeyFromPem(keyPem), pem: certPem };
+  return {
+    cert: pki.certificateFromPem(certPem),
+    key: pki.privateKeyFromPem(keyPem),
+    pem: certPem,
+  };
 }
 
 function loadIntermediate() {
-  const certPem = getPem('intermediate_cert_pem');
-  const keyPem  = getPem('intermediate_key_pem');
+  const certPem = getPem("intermediate_cert_pem");
+  const keyPem = getPem("intermediate_key_pem");
   if (!certPem || !keyPem) return null;
-  return { cert: pki.certificateFromPem(certPem), key: pki.privateKeyFromPem(keyPem), pem: certPem };
+  return {
+    cert: pki.certificateFromPem(certPem),
+    key: pki.privateKeyFromPem(keyPem),
+    pem: certPem,
+  };
 }
 
 // parseSubjectCN, sansToJson imported from helper
@@ -63,86 +93,94 @@ function loadIntermediate() {
 
 exports.isInitialized = async () => {
   ensureDirs();
-  const rootCert = getPem('root_cert_pem');
-  const rootKey  = getPem('root_key_pem');
-  const intCert  = getPem('intermediate_cert_pem');
-  const intKey   = getPem('intermediate_key_pem');
+  const rootCert = getPem("root_cert_pem");
+  const rootKey = getPem("root_key_pem");
+  const intCert = getPem("intermediate_cert_pem");
+  const intKey = getPem("intermediate_key_pem");
   return !!(rootCert && rootKey && intCert && intKey);
 };
 
 exports.fetchRootPEM = async () => {
-  const pem = getPem('root_cert_pem');
-  if (!pem) throw expose(404, 'Root certificate not found');
+  const pem = getPem("root_cert_pem");
+  if (!pem) throw expose(404, "Root certificate not found");
   return pem;
 };
 
 exports.fetchIntermediatesPEM = async () => {
-  const pem = getPem('intermediate_cert_pem');
-  if (!pem) throw expose(404, 'Intermediate certificate not found');
+  const pem = getPem("intermediate_cert_pem");
+  if (!pem) throw expose(404, "Intermediate certificate not found");
   return pem;
 };
 
 exports.initCA = async ({ name, dns }) => {
   ensureDirs();
-  if (await exports.isInitialized()) throw expose(409, 'CA is already initialized');
+  if (await exports.isInitialized())
+    throw expose(409, "CA is already initialized");
   // No legacy migrations
 
   // Root
-  const rootKp = nodeKeyPairToPEM('RSA', ROOT_KEY_BITS);
+  const rootKp = nodeKeyPairToPEM("RSA", ROOT_KEY_BITS);
   const rootPriv = pki.privateKeyFromPem(rootKp.privateKeyPem);
-  const rootPub  = pki.publicKeyFromPem(rootKp.publicKeyPem);
+  const rootPub = pki.publicKeyFromPem(rootKp.publicKeyPem);
 
   const rootCert = pki.createCertificate();
   rootCert.publicKey = rootPub;
-  rootCert.serialNumber = '01';
+  rootCert.serialNumber = "01";
   const { notBefore: rNB, notAfter: rNA } = nowPlusDays(ROOT_DAYS);
   rootCert.validity.notBefore = rNB;
-  rootCert.validity.notAfter  = rNA;
-  const rootName = name || 'Local Root CA';
+  rootCert.validity.notAfter = rNA;
+  const rootName = name || "Local Root CA";
   rootCert.setSubject(subjectAttrs(rootName));
   rootCert.setIssuer(subjectAttrs(rootName));
   rootCert.setExtensions([
-    { name: 'basicConstraints', cA: true, pathLenConstraint: 1 },
-    { name: 'keyUsage', keyCertSign: true, cRLSign: true },
-    { name: 'subjectKeyIdentifier' },
-    { name: 'authorityKeyIdentifier', authorityCertIssuer: true, serialNumber: rootCert.serialNumber },
+    { name: "basicConstraints", cA: true, pathLenConstraint: 1 },
+    { name: "keyUsage", keyCertSign: true, cRLSign: true },
+    { name: "subjectKeyIdentifier" },
+    {
+      name: "authorityKeyIdentifier",
+      authorityCertIssuer: true,
+      serialNumber: rootCert.serialNumber,
+    },
   ]);
   rootCert.sign(rootPriv, md.sha256.create());
 
   // Intermediate
-  const intKp = nodeKeyPairToPEM('RSA', INT_KEY_BITS);
+  const intKp = nodeKeyPairToPEM("RSA", INT_KEY_BITS);
   const intPriv = pki.privateKeyFromPem(intKp.privateKeyPem);
-  const intPub  = pki.publicKeyFromPem(intKp.publicKeyPem);
+  const intPub = pki.publicKeyFromPem(intKp.publicKeyPem);
 
   const intCert = pki.createCertificate();
   intCert.publicKey = intPub;
-  intCert.serialNumber = '02';
+  intCert.serialNumber = "02";
   const { notBefore: iNB, notAfter: iNA } = nowPlusDays(INT_DAYS);
   intCert.validity.notBefore = iNB;
-  intCert.validity.notAfter  = iNA;
-  const intCN = (name ? `${name} Intermediate CA` : 'Local Intermediate CA');
+  intCert.validity.notAfter = iNA;
+  const intCN = name ? `${name} Intermediate CA` : "Local Intermediate CA";
   intCert.setSubject(subjectAttrs(intCN));
   intCert.setIssuer(rootCert.subject.attributes);
   intCert.setExtensions([
-    { name: 'basicConstraints', cA: true, pathLenConstraint: 0 },
-    { name: 'keyUsage', keyCertSign: true, cRLSign: true },
-    { name: 'subjectKeyIdentifier' },
-  { name: 'authorityKeyIdentifier', keyIdentifier: subjectKeyIdentifier(rootPub) },
-  // If configured, advertise CRL URL for this issuer (intermediate)
-  ...(crlExtMaybe() ? [crlExtMaybe()] : [])
+    { name: "basicConstraints", cA: true, pathLenConstraint: 0 },
+    { name: "keyUsage", keyCertSign: true, cRLSign: true },
+    { name: "subjectKeyIdentifier" },
+    {
+      name: "authorityKeyIdentifier",
+      keyIdentifier: subjectKeyIdentifier(rootPub),
+    },
+    // If configured, advertise CRL URL for this issuer (intermediate)
+    ...(crlExtMaybe() ? [crlExtMaybe()] : []),
   ]);
   intCert.sign(rootPriv, md.sha256.create());
 
   // Persist to SQLite keystore
   tx(() => {
-    setPem('root_key_pem', pki.privateKeyToPem(rootPriv));
-    setPem('root_cert_pem', pki.certificateToPem(rootCert));
-    setPem('intermediate_key_pem', pki.privateKeyToPem(intPriv));
-    setPem('intermediate_cert_pem', pki.certificateToPem(intCert));
+    setPem("root_key_pem", pki.privateKeyToPem(rootPriv));
+    setPem("root_cert_pem", pki.certificateToPem(rootCert));
+    setPem("intermediate_key_pem", pki.privateKeyToPem(intPriv));
+    setPem("intermediate_cert_pem", pki.certificateToPem(intCert));
   });
 
   // Seed serial counter in DB
-  if (!getMeta('next_serial')) setMeta('next_serial', '1000');
+  if (!getMeta("next_serial")) setMeta("next_serial", "1000");
 
   return true;
 };
@@ -150,29 +188,50 @@ exports.initCA = async ({ name, dns }) => {
 exports.destroyCA = async () => {
   // Truncate all application tables in the SQLite DB (keep schema_migrations to avoid reapplying ALTERs)
   try {
-    try { db.pragma('foreign_keys = OFF'); } catch (_) { /* ignore */ }
+    try {
+      db.pragma("foreign_keys = OFF");
+    } catch (_) {
+      /* ignore */
+    }
     tx(() => {
-      const rows = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all();
-      const tables = rows.map(r => r.name);
+      const rows = db
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
+        )
+        .all();
+      const tables = rows.map((r) => r.name);
       for (const t of tables) {
-        if (t === 'schema_migrations') continue; // preserve applied migration history
+        if (t === "schema_migrations") continue; // preserve applied migration history
         db.exec(`DELETE FROM ${t};`);
       }
-  // Clear serial seed for a clean start
-  try { db.exec(`DELETE FROM meta WHERE key IN ('next_serial')`); } catch (_) { /* ignore */ }
+      // Clear serial seed for a clean start
+      try {
+        db.exec(`DELETE FROM meta WHERE key IN ('next_serial')`);
+      } catch (_) {
+        /* ignore */
+      }
       // Reset AUTOINCREMENT counters if present
-      try { db.exec('DELETE FROM sqlite_sequence;'); } catch (_) { /* noop if not exists */ }
+      try {
+        db.exec("DELETE FROM sqlite_sequence;");
+      } catch (_) {
+        /* noop if not exists */
+      }
     });
-  } catch (_) { /* swallow to ensure controller response */ }
-  finally {
-    try { db.pragma('foreign_keys = ON'); } catch (_) { /* ignore */ }
+  } catch (_) {
+    /* swallow to ensure controller response */
+  } finally {
+    try {
+      db.pragma("foreign_keys = ON");
+    } catch (_) {
+      /* ignore */
+    }
   }
 
   // Clean the local CA directory (logs, artifacts) but preserve the DB file if it lives inside CA_DIR
   try {
     if (fs.existsSync(CA_DIR)) {
       const caDir = path.resolve(CA_DIR);
-      const dbPath = path.resolve(DB_PATH || '');
+      const dbPath = path.resolve(DB_PATH || "");
       const entries = fs.readdirSync(caDir);
       for (const name of entries) {
         const p = path.join(caDir, name);
@@ -181,35 +240,61 @@ exports.destroyCA = async () => {
         fs.rmSync(p, { recursive: true, force: true });
       }
     }
-  } catch (_) { /* ignore */ }
+  } catch (_) {
+    /* ignore */
+  }
 };
 
 // Rotate all keystore entries from KEYSTORE_SECRET_OLD (or plaintext) to KEYSTORE_SECRET
 exports.rotateKeystoreSecret = async () => {
-  const newSecret = process.env.KEYSTORE_SECRET || '';
-  const oldSecret = process.env.KEYSTORE_SECRET_OLD || '';
+  const newSecret = process.env.KEYSTORE_SECRET || "";
+  const oldSecret = process.env.KEYSTORE_SECRET_OLD || "";
   if (!newSecret || newSecret.length < 8) {
-    const e = new Error('Rotation requires KEYSTORE_SECRET to be set (>= 8 chars).'); e.status = 400; e.expose = true; throw e;
+    const e = new Error(
+      "Rotation requires KEYSTORE_SECRET to be set (>= 8 chars).",
+    );
+    e.status = 400;
+    e.expose = true;
+    throw e;
   }
-  const rows = db.prepare('SELECT name, pem FROM keystore').all();
+  const rows = db.prepare("SELECT name, pem FROM keystore").all();
   let rotated = 0;
   tx(() => {
     for (const r of rows) {
-      const cur = r.pem || '';
+      const cur = r.pem || "";
       let plain;
-      if (cur.startsWith('ENCv1:')) {
+      if (cur.startsWith("ENCv1:")) {
         // Prefer old secret if provided; fallback to new (in case already partially rotated)
         let dec = null;
-        if (oldSecret && oldSecret.length >= 8) { try { dec = tryDec(cur, oldSecret); } catch { dec = null; } }
-        if (dec === null) { try { dec = tryDec(cur, newSecret); } catch { dec = null; } }
-        if (dec === null) { const e = new Error(`Cannot decrypt keystore item ${r.name} with provided secrets`); e.status = 400; e.expose = true; throw e; }
+        if (oldSecret && oldSecret.length >= 8) {
+          try {
+            dec = tryDec(cur, oldSecret);
+          } catch {
+            dec = null;
+          }
+        }
+        if (dec === null) {
+          try {
+            dec = tryDec(cur, newSecret);
+          } catch {
+            dec = null;
+          }
+        }
+        if (dec === null) {
+          const e = new Error(
+            `Cannot decrypt keystore item ${r.name} with provided secrets`,
+          );
+          e.status = 400;
+          e.expose = true;
+          throw e;
+        }
         plain = dec;
       } else {
         plain = cur; // plaintext
       }
       const reEnc = encMaybe(plain, newSecret);
       if (reEnc !== cur) {
-        db.prepare('UPDATE keystore SET pem=? WHERE name=?').run(reEnc, r.name);
+        db.prepare("UPDATE keystore SET pem=? WHERE name=?").run(reEnc, r.name);
         rotated++;
       }
     }
@@ -218,62 +303,90 @@ exports.rotateKeystoreSecret = async () => {
 };
 
 // Sign CSR into a leaf certificate
-exports.signCsr = async ({ csrPem, subject, sans = [], notAfterDays = LEAF_DAYS_DEFAULT }) => {
-  if (!await exports.isInitialized()) throw expose(409, 'CA not initialized');
+exports.signCsr = async ({
+  csrPem,
+  subject,
+  sans = [],
+  notAfterDays = LEAF_DAYS_DEFAULT,
+}) => {
+  if (!(await exports.isInitialized())) throw expose(409, "CA not initialized");
   const ca = loadIntermediate();
 
   const csr = pki.certificationRequestFromPem(csrPem);
-  if (!csr.verify()) throw expose(400, 'Invalid CSR signature');
+  if (!csr.verify()) throw expose(400, "Invalid CSR signature");
 
   // Combine SANs: CSR + passed
   let altNames = [];
-  const extReq = (csr.getAttribute({ name: 'extensionRequest' }) || {}).extensions || [];
-  const sanExt = extReq.find(e => e.name === 'subjectAltName');
+  const extReq =
+    (csr.getAttribute({ name: "extensionRequest" }) || {}).extensions || [];
+  const sanExt = extReq.find((e) => e.name === "subjectAltName");
   if (sanExt?.altNames) altNames = altNames.concat(sanExt.altNames);
-  for (const s of (sans || [])) {
+  for (const s of sans || []) {
     if (!s) continue;
     if (net.isIP(s)) altNames.push({ type: 7, ip: s });
-    else if (s.includes('@')) altNames.push({ type: 1, value: s });
+    else if (s.includes("@")) altNames.push({ type: 1, value: s });
     else altNames.push({ type: 2, value: s });
   }
 
   const cert = pki.createCertificate();
   cert.publicKey = csr.publicKey;
   cert.serialNumber = allocateSerialHex();
-  const { notBefore, notAfter } = nowPlusDays(Number(notAfterDays) || LEAF_DAYS_DEFAULT);
+  const { notBefore, notAfter } = nowPlusDays(
+    Number(notAfterDays) || LEAF_DAYS_DEFAULT,
+  );
   cert.validity.notBefore = notBefore;
-  cert.validity.notAfter  = notAfter;
+  cert.validity.notAfter = notAfter;
 
-  const subjAttrs = csr.subject?.attributes?.length ? csr.subject.attributes : subjectAttrs(subject || '');
+  const subjAttrs = csr.subject?.attributes?.length
+    ? csr.subject.attributes
+    : subjectAttrs(subject || "");
   cert.setSubject(subjAttrs);
   cert.setIssuer(ca.cert.subject.attributes);
 
   const exts = [
-    { name: 'basicConstraints', cA: false },
-    { name: 'keyUsage', digitalSignature: true, keyEncipherment: true, keyAgreement: true, nonRepudiation: true },
-    { name: 'extKeyUsage', serverAuth: true, clientAuth: true, emailProtection: true },
-    { name: 'subjectKeyIdentifier' },
-  { name: 'authorityKeyIdentifier', keyIdentifier: subjectKeyIdentifier(ca.cert.publicKey) },
-  ...(crlExtMaybe() ? [crlExtMaybe()] : [])
+    { name: "basicConstraints", cA: false },
+    {
+      name: "keyUsage",
+      digitalSignature: true,
+      keyEncipherment: true,
+      keyAgreement: true,
+      nonRepudiation: true,
+    },
+    {
+      name: "extKeyUsage",
+      serverAuth: true,
+      clientAuth: true,
+      emailProtection: true,
+    },
+    { name: "subjectKeyIdentifier" },
+    {
+      name: "authorityKeyIdentifier",
+      keyIdentifier: subjectKeyIdentifier(ca.cert.publicKey),
+    },
+    ...(crlExtMaybe() ? [crlExtMaybe()] : []),
   ];
-  if (altNames.length) exts.push({ name: 'subjectAltName', altNames });
+  if (altNames.length) exts.push({ name: "subjectAltName", altNames });
   cert.setExtensions(exts);
 
   cert.sign(ca.key, md.sha256.create());
 
   // Record in DB
   tx(() => {
-    db.prepare(`
+    db.prepare(
+      `
   INSERT INTO certs(serial_hex, subject_cn, subject, sans_json, not_before, not_after, renewed_from, cert_pem)
   VALUES (?, ?, ?, ?, ?, ?, NULL, ?)
-    `).run(
+    `,
+    ).run(
       cert.serialNumber,
       parseSubjectCN(cert),
-      cert.subject.attributes.map(a=>`${a.shortName || a.name}=${a.value}`).join(','),
+      cert.subject.attributes
+        .map((a) => `${a.shortName || a.name}=${a.value}`)
+        .join(","),
       JSON.stringify(sansToJson(altNames)),
-  cert.validity.notBefore.toISOString(),
-  cert.validity.notAfter.toISOString(),
-  pki.certificateToPem(cert)
+      cert.validity.notBefore.toISOString(),
+      cert.validity.notAfter.toISOString(),
+      pki.certificateToPem(cert),
     );
   });
 
@@ -282,58 +395,81 @@ exports.signCsr = async ({ csrPem, subject, sans = [], notAfterDays = LEAF_DAYS_
 
 // Renew with same key/subject/SANs
 exports.renewWithMTLS = async ({ certPem, keyPem }) => {
-  if (!await exports.isInitialized()) throw expose(409, 'CA not initialized');
+  if (!(await exports.isInitialized())) throw expose(409, "CA not initialized");
   const ca = loadIntermediate();
 
   const old = pki.certificateFromPem(certPem);
   const priv = pki.privateKeyFromPem(keyPem);
 
   // key ownership check: sign a digest and verify against cert public key
-  const test = md.sha256.create(); test.update('prove-key', 'utf8');
+  const test = md.sha256.create();
+  test.update("prove-key", "utf8");
   const sig = priv.sign(test);
-  const digestBytes = md.sha256.create(); digestBytes.update('prove-key', 'utf8');
-  if (!old.publicKey.verify(digestBytes.digest().bytes(), sig)) throw expose(400, 'Provided private key does not match certificate');
+  const digestBytes = md.sha256.create();
+  digestBytes.update("prove-key", "utf8");
+  if (!old.publicKey.verify(digestBytes.digest().bytes(), sig))
+    throw expose(400, "Provided private key does not match certificate");
 
   // revoked?
-  const r = db.prepare('SELECT 1 FROM revocations WHERE serial_hex=?').get(old.serialNumber);
-  if (r) throw expose(409, 'Certificate is revoked');
+  const r = db
+    .prepare("SELECT 1 FROM revocations WHERE serial_hex=?")
+    .get(old.serialNumber);
+  if (r) throw expose(409, "Certificate is revoked");
 
   const cert = pki.createCertificate();
   cert.publicKey = old.publicKey;
   cert.serialNumber = allocateSerialHex();
   const { notBefore, notAfter } = nowPlusDays(LEAF_DAYS_DEFAULT);
   cert.validity.notBefore = notBefore;
-  cert.validity.notAfter  = notAfter;
+  cert.validity.notAfter = notAfter;
   cert.setSubject(old.subject.attributes);
   cert.setIssuer(ca.cert.subject.attributes);
 
-  const oldSan = (old.getExtension('subjectAltName') || {}).altNames || [];
+  const oldSan = (old.getExtension("subjectAltName") || {}).altNames || [];
   const exts = [
-    { name: 'basicConstraints', cA: false },
-    { name: 'keyUsage', digitalSignature: true, keyEncipherment: true, keyAgreement: true, nonRepudiation: true },
-    { name: 'extKeyUsage', serverAuth: true, clientAuth: true, emailProtection: true },
-    { name: 'subjectKeyIdentifier' },
-  { name: 'authorityKeyIdentifier', keyIdentifier: subjectKeyIdentifier(ca.cert.publicKey) },
-  ...(crlExtMaybe() ? [crlExtMaybe()] : [])
+    { name: "basicConstraints", cA: false },
+    {
+      name: "keyUsage",
+      digitalSignature: true,
+      keyEncipherment: true,
+      keyAgreement: true,
+      nonRepudiation: true,
+    },
+    {
+      name: "extKeyUsage",
+      serverAuth: true,
+      clientAuth: true,
+      emailProtection: true,
+    },
+    { name: "subjectKeyIdentifier" },
+    {
+      name: "authorityKeyIdentifier",
+      keyIdentifier: subjectKeyIdentifier(ca.cert.publicKey),
+    },
+    ...(crlExtMaybe() ? [crlExtMaybe()] : []),
   ];
-  if (oldSan.length) exts.push({ name: 'subjectAltName', altNames: oldSan });
+  if (oldSan.length) exts.push({ name: "subjectAltName", altNames: oldSan });
   cert.setExtensions(exts);
 
   cert.sign(ca.key, md.sha256.create());
 
   tx(() => {
-    db.prepare(`
+    db.prepare(
+      `
   INSERT INTO certs(serial_hex, subject_cn, subject, sans_json, not_before, not_after, renewed_from, cert_pem)
   VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
+    `,
+    ).run(
       cert.serialNumber,
       parseSubjectCN(cert),
-      cert.subject.attributes.map(a=>`${a.shortName || a.name}=${a.value}`).join(','),
+      cert.subject.attributes
+        .map((a) => `${a.shortName || a.name}=${a.value}`)
+        .join(","),
       JSON.stringify(sansToJson(oldSan)),
       cert.validity.notBefore.toISOString(),
-  cert.validity.notAfter.toISOString(),
-  old.serialNumber,
-  pki.certificateToPem(cert)
+      cert.validity.notAfter.toISOString(),
+      old.serialNumber,
+      pki.certificateToPem(cert),
     );
   });
 
@@ -341,50 +477,63 @@ exports.renewWithMTLS = async ({ certPem, keyPem }) => {
 };
 
 // Revocations
-exports.revokeWithMTLS = async ({ certPem, keyPem, reason = '' }) => {
+exports.revokeWithMTLS = async ({ certPem, keyPem, reason = "" }) => {
   const cert = pki.certificateFromPem(certPem);
   const priv = pki.privateKeyFromPem(keyPem);
-  const test = md.sha256.create(); test.update('prove-revoke', 'utf8');
+  const test = md.sha256.create();
+  test.update("prove-revoke", "utf8");
   const sig = priv.sign(test);
-  const digestBytes = md.sha256.create(); digestBytes.update('prove-revoke', 'utf8');
-  if (!cert.publicKey.verify(digestBytes.digest().bytes(), sig)) throw expose(400, 'Private key does not match certificate');
+  const digestBytes = md.sha256.create();
+  digestBytes.update("prove-revoke", "utf8");
+  if (!cert.publicKey.verify(digestBytes.digest().bytes(), sig))
+    throw expose(400, "Private key does not match certificate");
 
   tx(() => {
-    db.prepare(`
+    db.prepare(
+      `
       INSERT INTO revocations(serial_hex, reason, revoked_at)
       VALUES (?, ?, ?)
       ON CONFLICT(serial_hex) DO UPDATE SET reason=excluded.reason, revoked_at=excluded.revoked_at
-    `).run(cert.serialNumber, reason || '', new Date().toISOString());
+    `,
+    ).run(cert.serialNumber, reason || "", new Date().toISOString());
   });
 };
 
-exports.revokeBySerialToken = async ({ serial, reason = '' }) => {
-  if (!serial) throw expose(400, 'Missing serial');
+exports.revokeBySerialToken = async ({ serial, reason = "" }) => {
+  if (!serial) throw expose(400, "Missing serial");
   tx(() => {
-    db.prepare(`
+    db.prepare(
+      `
       INSERT INTO revocations(serial_hex, reason, revoked_at)
       VALUES (?, ?, ?)
       ON CONFLICT(serial_hex) DO UPDATE SET reason=excluded.reason, revoked_at=excluded.revoked_at
-    `).run(serial, reason || '', new Date().toISOString());
+    `,
+    ).run(serial, reason || "", new Date().toISOString());
   });
 };
 
 // Optional CRL (signed by intermediate)
 exports.generateCRLPEM = async () => {
-  if (!await exports.isInitialized()) throw expose(409, 'CA not initialized');
+  if (!(await exports.isInitialized())) throw expose(409, "CA not initialized");
   const ca = loadIntermediate();
 
-  const rows = db.prepare('SELECT serial_hex, reason, revoked_at FROM revocations').all();
-  const revoked = rows.map(r => ({
+  const rows = db
+    .prepare("SELECT serial_hex, reason, revoked_at FROM revocations")
+    .all();
+  const revoked = rows.map((r) => ({
     serialNumber: r.serial_hex,
     revocationDate: new Date(r.revoked_at),
-    reasonCode: 0
+    reasonCode: 0,
   }));
-  const hasCreateCRL = typeof pki.createCertificateRevocationList === 'function' || typeof pki.createCRL === 'function';
+  const hasCreateCRL =
+    typeof pki.createCertificateRevocationList === "function" ||
+    typeof pki.createCRL === "function";
   if (!hasCreateCRL) {
     // Fallback: return a placeholder CRL PEM so routes/tests can proceed.
-    const b64 = Buffer.from('placeholder-crl').toString('base64').replace(/=+$/, '');
-    const wrapped = b64.match(/.{1,64}/g)?.join('\n') || b64;
+    const b64 = Buffer.from("placeholder-crl")
+      .toString("base64")
+      .replace(/=+$/, "");
+    const wrapped = b64.match(/.{1,64}/g)?.join("\n") || b64;
     return `-----BEGIN X509 CRL-----\n${wrapped}\n-----END X509 CRL-----\n`;
   }
 
@@ -394,7 +543,7 @@ exports.generateCRLPEM = async () => {
   crl.thisUpdate = new Date();
   crl.nextUpdate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   crl.revokedCertificates = revoked;
-  if (typeof crl.sign === 'function') crl.sign(ca.key, md.sha256.create());
+  if (typeof crl.sign === "function") crl.sign(ca.key, md.sha256.create());
 
   return pki.crlToPem(crl);
 };

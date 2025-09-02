@@ -1,8 +1,8 @@
 // src/routes/adminAcme.js
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const adminAcme = require('../controllers/adminAcmeController');
+const adminAcme = require("../controllers/adminAcmeController");
 
-router.get('/', adminAcme.list);
+router.get("/", adminAcme.list);
 
 module.exports = router;

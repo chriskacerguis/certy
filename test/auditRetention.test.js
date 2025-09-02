@@ -1,30 +1,36 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
-describe('audit retention purge', () => {
+describe("audit retention purge", () => {
   const origCwd = process.cwd();
-  const TMP = path.join(process.cwd(), '.tmp-audit-retain');
+  const TMP = path.join(process.cwd(), ".tmp-audit-retain");
 
   beforeEach(() => {
     if (fs.existsSync(TMP)) fs.rmSync(TMP, { recursive: true, force: true });
     fs.mkdirSync(TMP, { recursive: true });
     process.chdir(TMP);
     jest.resetModules();
-    process.env.NODE_ENV = 'test';
-    process.env.MIGRATIONS_DIR = path.join(__dirname, '..', 'src', 'migrations');
+    process.env.NODE_ENV = "test";
+    process.env.MIGRATIONS_DIR = path.join(
+      __dirname,
+      "..",
+      "src",
+      "migrations",
+    );
   });
 
   afterEach(() => {
     process.chdir(origCwd);
   });
 
-  test('default 90d keeps recent and deletes old', () => {
-    const { db } = require('../src/services/db');
-    const audit = require('../src/services/auditService');
+  test("default 90d keeps recent and deletes old", () => {
+    const { db } = require("../src/services/db");
+    const audit = require("../src/services/auditService");
 
     function add(tsIso) {
-      db.prepare('INSERT INTO audit_logs(ts, type, details_json) VALUES(?, ?, ?)')
-        .run(tsIso, 'TEST', '{}');
+      db.prepare(
+        "INSERT INTO audit_logs(ts, type, details_json) VALUES(?, ?, ?)",
+      ).run(tsIso, "TEST", "{}");
     }
 
     const now = Date.now();
@@ -38,24 +44,27 @@ describe('audit retention purge', () => {
     add(new Date(now - 10 * day).toISOString()); // keep
     add(new Date(now - 0 * day).toISOString()); // keep
 
-    const before = db.prepare('SELECT COUNT(*) as c FROM audit_logs').get().c;
+    const before = db.prepare("SELECT COUNT(*) as c FROM audit_logs").get().c;
     expect(before).toBe(4);
 
     const removed = audit.purgeOldAuditLogs();
     expect(removed).toBeGreaterThanOrEqual(2);
 
-    const remaining = db.prepare('SELECT COUNT(*) as c FROM audit_logs').get().c;
+    const remaining = db
+      .prepare("SELECT COUNT(*) as c FROM audit_logs")
+      .get().c;
     expect(remaining).toBeLessThanOrEqual(2);
   });
 
-  test('respects env override and clamps', () => {
-    process.env.AUDIT_RETENTION_DAYS = '7';
-    const { db } = require('../src/services/db');
-    const audit = require('../src/services/auditService');
+  test("respects env override and clamps", () => {
+    process.env.AUDIT_RETENTION_DAYS = "7";
+    const { db } = require("../src/services/db");
+    const audit = require("../src/services/auditService");
 
     function add(tsIso) {
-      db.prepare('INSERT INTO audit_logs(ts, type, details_json) VALUES(?, ?, ?)')
-        .run(tsIso, 'TEST', '{}');
+      db.prepare(
+        "INSERT INTO audit_logs(ts, type, details_json) VALUES(?, ?, ?)",
+      ).run(tsIso, "TEST", "{}");
     }
 
     const now = Date.now();

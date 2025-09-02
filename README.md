@@ -1,6 +1,6 @@
 # Certy
 
-Easy to use Web Based CA with SMIME and ACME support.  This is primarily for homelab use.  This project is really for me to learn about running a CA and the ends and outs.  That said, tt is in use with a few mid-size businesses.  
+Easy to use Web Based CA with SMIME and ACME support. This is primarily for homelab use. This project is really for me to learn about running a CA and the ends and outs. That said, tt is in use with a few mid-size businesses.
 
 The code, however, has not been audited and there may be some security issues.
 
@@ -13,8 +13,7 @@ If you are running this in a homelab and aren't worried too much about security,
 
 ## User Management
 
-Certy supports OIDC, and I do include a simple OIDC "testing" service, which I use in my homelab and for development.  If you want something more robust it will work with any OIDC provider, like Keycloak or CASdoor.  If you are looking for a lightweight one, I would suggest [Pocket ID](https://pocket-id.org/).
-
+Certy supports OIDC, and I do include a simple OIDC "testing" service, which I use in my homelab and for development. If you want something more robust it will work with any OIDC provider, like Keycloak or CASdoor. If you are looking for a lightweight one, I would suggest [Pocket ID](https://pocket-id.org/).
 
 ## Docker backup and restore
 
@@ -132,63 +131,64 @@ Set these in your shell or a `.env` file. Defaults are shown where applicable.
 Tip: To keep things simple, only common settings are in `.env`. Advanced, rarely-changed defaults live in `src/config.defaults.js` and can be overridden via envs when needed.
 
 - Core/server
-	- PORT: Port to listen on. Default 3000.
-	- NODE_ENV: Node environment. Affects logging and cookie security. Default development.
-	- TRUST_PROXY: Set true when behind a reverse proxy/load balancer to enable secure cookies. Default false.
-	- SESSION_SECRET: Secret for session cookies. Default change_me (set a strong value in production).
-	- RATE_LIMIT_MAX: Requests per minute per IP. Default 120.
-	# Auth bypass is no longer supported; when OIDC is not configured, routes are accessible for dev only.
- 	- AUDIT_RETENTION_DAYS: Days to retain audit log entries; older entries are purged at startup and daily. Default 90.
+  - PORT: Port to listen on. Default 3000.
+  - NODE_ENV: Node environment. Affects logging and cookie security. Default development.
+  - TRUST_PROXY: Set true when behind a reverse proxy/load balancer to enable secure cookies. Default false.
+  - SESSION_SECRET: Secret for session cookies. Default change_me (set a strong value in production).
+  - RATE_LIMIT_MAX: Requests per minute per IP. Default 120.
+
+  # Auth bypass is no longer supported; when OIDC is not configured, routes are accessible for dev only.
+  - AUDIT_RETENTION_DAYS: Days to retain audit log entries; older entries are purged at startup and daily. Default 90.
 
 - Logging
-	- LOG_LEVEL: pino log level. Default debug in development, info in production.
-	- LOG_PRETTY: Pretty-print logs for local dev. Default false.
-	- HTTP_LOG_SAMPLE_RATE: Sample rate for successful HTTP logs (1-in-N). Default 10.
-	- HTTP_LOG_IGNORE_PATHS: Comma-separated paths to skip logging. Default /healthz,/favicon.ico,/public
+  - LOG_LEVEL: pino log level. Default debug in development, info in production.
+  - LOG_PRETTY: Pretty-print logs for local dev. Default false.
+  - HTTP_LOG_SAMPLE_RATE: Sample rate for successful HTTP logs (1-in-N). Default 10.
+  - HTTP_LOG_IGNORE_PATHS: Comma-separated paths to skip logging. Default /healthz,/favicon.ico,/public
 
 - SQLite storage and migrations
-	- LOCAL_CA_DIR: Base dir for local CA data. Default ./.local-ca
-	- LOCAL_CA_DB: SQLite DB path. Default <LOCAL_CA_DIR>/ca.db
-	- MIGRATIONS_DIR: Directory containing DB migrations. Default ./src/migrations
-	- KEYSTORE_SECRET: Optional passphrase (>= 8 chars). When set, private keys stored in DB are encrypted with AES-256-GCM.
+  - LOCAL_CA_DIR: Base dir for local CA data. Default ./.local-ca
+  - LOCAL_CA_DB: SQLite DB path. Default <LOCAL_CA_DIR>/ca.db
+  - MIGRATIONS_DIR: Directory containing DB migrations. Default ./src/migrations
+  - KEYSTORE_SECRET: Optional passphrase (>= 8 chars). When set, private keys stored in DB are encrypted with AES-256-GCM.
 
 - CA settings
-	- ENABLE_CA_LIFECYCLE: Enable init/destroy CA actions from UI. Default false.
-	- CA_ROOT_DAYS: Root cert validity in days. Default 3650.
-	- CA_INT_DAYS: Intermediate cert validity in days. Default 1825.
-	- CA_LEAF_DAYS: Default leaf cert validity in days. Default 90.
-	- CA_ROOT_KEY_BITS: Root RSA key size. Default 4096.
-	- CA_INT_KEY_BITS: Intermediate RSA key size. Default 3072.
-	- S3_CRL_PUBLIC_URL: If set, included in generated intermediate and leaf certificates as a CRL Distribution Point (cRLDistributionPoints).
+  - ENABLE_CA_LIFECYCLE: Enable init/destroy CA actions from UI. Default false.
+  - CA_ROOT_DAYS: Root cert validity in days. Default 3650.
+  - CA_INT_DAYS: Intermediate cert validity in days. Default 1825.
+  - CA_LEAF_DAYS: Default leaf cert validity in days. Default 90.
+  - CA_ROOT_KEY_BITS: Root RSA key size. Default 4096.
+  - CA_INT_KEY_BITS: Intermediate RSA key size. Default 3072.
+  - S3_CRL_PUBLIC_URL: If set, included in generated intermediate and leaf certificates as a CRL Distribution Point (cRLDistributionPoints).
 
 - ACME
-	- ACME_ENABLE: Enable ACME endpoints. Default false.
-	- ACME_HTTP_VERIFY_TIMEOUT_MS: HTTP-01 fetch timeout (ms). Default 5000.
+  - ACME_ENABLE: Enable ACME endpoints. Default false.
+  - ACME_HTTP_VERIFY_TIMEOUT_MS: HTTP-01 fetch timeout (ms). Default 5000.
 
 - CRL publishing to S3/compatible storage
-	- S3_CRL_ENABLE: Enable CRL publishing. Default false.
-	- S3_CRL_BUCKET: Target bucket name. Required when enabled.
-	- S3_CRL_KEY: Object key for the CRL. Default crl/intermediate.crl.pem
-	- S3_CRL_REGION: AWS region. Default us-east-1.
-	- S3_CRL_ENDPOINT: Optional custom endpoint (e.g., http://localhost:9000 for MinIO).
-	- S3_CRL_PUBLIC_URL: Optional public URL override for the CRL (used in UI and embedded in certs via cRLDistributionPoints).
-	- S3_CRL_ACL: Object ACL. Default public-read (ensure your bucket policy allows this or remove ACL).
-	- S3_CRL_CACHE_CONTROL: Cache-Control header for CRL objects. Default public, max-age=300
-	- S3_CRL_FORCE_PATH_STYLE: true for path-style addressing (needed for some S3-compatible stores). Default false.
+  - S3_CRL_ENABLE: Enable CRL publishing. Default false.
+  - S3_CRL_BUCKET: Target bucket name. Required when enabled.
+  - S3_CRL_KEY: Object key for the CRL. Default crl/intermediate.crl.pem
+  - S3_CRL_REGION: AWS region. Default us-east-1.
+  - S3_CRL_ENDPOINT: Optional custom endpoint (e.g., http://localhost:9000 for MinIO).
+  - S3_CRL_PUBLIC_URL: Optional public URL override for the CRL (used in UI and embedded in certs via cRLDistributionPoints).
+  - S3_CRL_ACL: Object ACL. Default public-read (ensure your bucket policy allows this or remove ACL).
+  - S3_CRL_CACHE_CONTROL: Cache-Control header for CRL objects. Default public, max-age=300
+  - S3_CRL_FORCE_PATH_STYLE: true for path-style addressing (needed for some S3-compatible stores). Default false.
 
 - SMTP (for optional S/MIME p12 email delivery)
-	- SMTP_HOST: SMTP server hostname. If not set, email option is hidden/disabled in UI.
-	- SMTP_PORT: SMTP port. Default 587.
-	- SMTP_SECURE: Use TLS (smtps). Default false.
-	- SMTP_USER: Optional username.
-	- SMTP_PASS: Optional password.
-	- SMTP_FROM: From address used for emails. Default no-reply@example.com
+  - SMTP_HOST: SMTP server hostname. If not set, email option is hidden/disabled in UI.
+  - SMTP_PORT: SMTP port. Default 587.
+  - SMTP_SECURE: Use TLS (smtps). Default false.
+  - SMTP_USER: Optional username.
+  - SMTP_PASS: Optional password.
+  - SMTP_FROM: From address used for emails. Default no-reply@example.com
 
 - OIDC authentication (optional; when not configured and AUTH_OPTIONAL=true, routes work without login)
-	- OIDC_ISSUER: Issuer URL, e.g., https://your-idp/. Required to enable OIDC.
-	- OIDC_CLIENT_ID: OIDC client ID.
-	- OIDC_CLIENT_SECRET: OIDC client secret.
-	- OIDC_REDIRECT_URI: Redirect URI (must match app registration), e.g., http://localhost:3000/auth/callback
-	- OIDC_SCOPES: Requested scopes. Default openid profile email
+  - OIDC_ISSUER: Issuer URL, e.g., https://your-idp/. Required to enable OIDC.
+  - OIDC_CLIENT_ID: OIDC client ID.
+  - OIDC_CLIENT_SECRET: OIDC client secret.
+  - OIDC_REDIRECT_URI: Redirect URI (must match app registration), e.g., http://localhost:3000/auth/callback
+  - OIDC_SCOPES: Requested scopes. Default openid profile email
 
 See `.env.example` for a starter configuration.
