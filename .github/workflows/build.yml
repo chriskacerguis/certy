@@ -94,21 +94,20 @@ jobs:
       - name: Create checksums
         run: |
           cd artifacts
+          # Copy binaries from artifact directories to parent
           for dir in */; do
-            cd "$dir"
-            sha256sum * > checksums.txt
-            cd ..
+            if [ -d "$dir" ]; then
+              cp -v "$dir"* . 2>/dev/null || true
+            fi
           done
-          find . -name "certy-*" -o -name "checksums.txt" | xargs -I {} cp {} ../
-          cd ..
+          # Create checksums for all binaries
           sha256sum certy-* > SHA256SUMS
+          cat SHA256SUMS
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: |
-            certy-*
-            SHA256SUMS
+          files: artifacts/certy-*
           body: |
             ## Certy ${{ github.ref_name }}
             
