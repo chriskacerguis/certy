@@ -201,6 +201,30 @@ certy -pkcs12 user@example.com
 # Outputs: user-at-example.com.pem, user-at-example.com-key.pem, user-at-example.com.p12
 ```
 
+The PKCS#12 file contains:
+- Your S/MIME certificate
+- Your private key
+- The intermediate CA certificate (for chain validation)
+- No password (empty password for simplicity)
+
+This `.p12` file can be imported directly into:
+- Email clients (Thunderbird, Outlook, Apple Mail)
+- Web browsers (Chrome, Firefox, Safari)
+- Mobile devices (iOS, Android)
+
+**Import example (macOS):**
+```bash
+# Double-click the .p12 file, or:
+open user-at-example.com.p12
+# Enter empty password when prompted
+```
+
+**Import example (Linux with Thunderbird):**
+```bash
+# Settings → Privacy & Security → Certificates → Manage Certificates
+# → Your Certificates → Import → Select the .p12 file
+```
+
 ### ECDSA Certificate
 
 ```bash
