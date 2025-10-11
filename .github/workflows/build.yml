@@ -94,35 +94,25 @@ jobs:
       - name: Download all artifacts and create checksums
         run: |
           cd artifacts
-          # List what we have
-          echo "=== Artifact structure ==="
-          ls -la
-          find . -type f
-          
-          # Copy binaries from artifact directories to current directory
+          # Move binaries from artifact directories to current directory
           for dir in */; do
             if [ -d "$dir" ]; then
-              echo "Copying from $dir"
-              find "$dir" -type f -exec cp -v {} . \;
+              echo "Processing $dir"
+              # Move files out of the directory
+              find "$dir" -type f -exec mv -v {} . \;
+              # Remove the now-empty directory
+              rmdir "$dir"
             fi
           done
           
-          # Remove the now-empty artifact directories
-          rm -rf */
+          # List files after move
+          echo "=== Files ready for checksums ==="
+          ls -lh certy-*
           
-          # List files after copy
-          echo "=== Files after copy ==="
-          ls -la
-          
-          # Create checksums for all binaries (now only files remain)
-          if ls certy-* 1> /dev/null 2>&1; then
-            sha256sum certy-* > SHA256SUMS
-            echo "=== SHA256SUMS ==="
-            cat SHA256SUMS
-          else
-            echo "ERROR: No certy-* files found"
-            exit 1
-          fi
+          # Create checksums for all binaries
+          sha256sum certy-* > SHA256SUMS
+          echo "=== SHA256SUMS ==="
+          cat SHA256SUMS
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
