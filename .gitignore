@@ -1,0 +1,32 @@
+# Binaries
+certy
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test certificates and keys
+*.pem
+*.key
+*.csr
+*.p12
+*.pfx
+
+# Go build artifacts
+*.test
+*.out
+*.prof
+
+# Dependency directories
+vendor/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS files
+Thumbs.db
