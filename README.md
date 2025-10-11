@@ -3,7 +3,7 @@
 [![CI](https://github.com/chriskacerguis/certy/workflows/CI/badge.svg)](https://github.com/chriskacerguis/certy/actions)
 [![Release](https://github.com/chriskacerguis/certy/workflows/Build%20and%20Release/badge.svg)](https://github.com/chriskacerguis/certy/releases)
 
-A lightweight, user-friendly command-line tool for managing your own Certificate Authority and generating certificates for development and testing.  It is designed to be a drop in replacement for `mkcert`.
+A lightweight, user-friendly command-line tool for managing your own Certificate Authority and generating certificates for development and testing.  It is based off of `mkcert`, but `mkcert` hasn't been updated in a while and is seems to be stale and not keeping up with morn modern CA requirments like intermediate certs which, even in dev environments is reqired.  It is designed to be a drop in replacement for `mkcert` (as of Oct 10, 2025).
 
 ## Features
 
