@@ -13,7 +13,7 @@ certy/
 ├── config.go     # Configuration management, storage paths, serial numbers
 ├── ca.go         # CA generation (root + intermediate), key/cert persistence
 ├── cert.go       # Certificate generation, SAN parsing, CSR handling
-├── pkcs12.go     # PKCS#12 export functionality
+├── pkcs12.go     # PKCS12 export functionality
 ├── go.mod        # Dependencies: gopkg.in/yaml.v3, go-pkcs12
 └── .github/
     ├── copilot-instructions.md
@@ -72,7 +72,7 @@ Smart auto-detection implemented in `cert.go`:
 
 ### Key Dependencies
 - Go standard library: `crypto/x509`, `crypto/rsa`, `crypto/ecdsa`, `crypto/x509/pkix`
-- `software.sslmate.com/src/go-pkcs12` v0.4.0 for PKCS#12 support
+- `software.sslmate.com/src/go-pkcs12` v0.4.0 for PKCS12 support
 - `gopkg.in/yaml.v3` for configuration parsing
 
 ### Storage & Persistence
@@ -172,7 +172,7 @@ Validated scenarios:
 - ✅ S/MIME certificates for email addresses
 - ✅ Client authentication certificates
 - ✅ ECDSA key generation (P-256 curve)
-- ✅ PKCS#12 export with certificate chain
+- ✅ PKCS12 export with certificate chain
 - ✅ Certificate chain validation (root → intermediate → end-entity)
 - ✅ Sequential serial number tracking
 - ✅ Filename sanitization for special characters
@@ -192,7 +192,7 @@ certy example.com "*.example.com" 127.0.0.1 ::1     # Multi-domain with IPs
 certy user@example.com                               # S/MIME (auto-detected)
 certy -client client.example.com                     # Client auth
 certy -ecdsa secure.example.com                      # ECDSA key
-certy -pkcs12 app.example.com                        # With PKCS#12 export
+certy -pkcs12 app.example.com                        # With PKCS12 export
 certy -ca-dir ./custom-ca example.com                # Use custom CA
 ```
 
@@ -209,5 +209,5 @@ openssl verify -CAfile ~/.certy/rootCA.pem -untrusted ~/.certy/intermediateCA.pe
 ## Security Considerations
 ⚠️ **This tool is for development/testing only**:
 - CA private keys are stored unencrypted
-- PKCS#12 files use empty passwords
+- PKCS12 files use empty passwords
 - Not suitable for production use
