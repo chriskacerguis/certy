@@ -94,18 +94,25 @@ jobs:
       - name: Download all artifacts and create checksums
         run: |
           cd artifacts
-          # Move binaries from artifact directories to current directory
+          # Create a temp directory for binaries
+          mkdir -p binaries
+          
+          # Move binaries from artifact directories to binaries directory
           for dir in */; do
-            if [ -d "$dir" ]; then
+            if [ -d "$dir" ] && [ "$dir" != "binaries/" ]; then
               echo "Processing $dir"
-              # Move files out of the directory
-              find "$dir" -type f -exec mv -v {} . \;
-              # Remove the now-empty directory
-              rmdir "$dir"
+              find "$dir" -type f -exec mv -v {} binaries/ \;
             fi
           done
           
-          # List files after move
+          # Remove artifact directories
+          rm -rf certy-*
+          
+          # Move binaries back to artifacts root
+          mv binaries/* .
+          rmdir binaries
+          
+          # List files ready for checksums
           echo "=== Files ready for checksums ==="
           ls -lh certy-*
           
