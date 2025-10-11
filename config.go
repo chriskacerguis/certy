@@ -30,7 +30,7 @@ func DefaultConfig() *Config {
 
 // getCertyDir returns the directory where certy stores its files
 func getCertyDir() (string, error) {
-	// Use custom directory if specified
+	// Priority 1: Use custom directory if specified via -ca-dir flag
 	if customCADir != "" {
 		absPath, err := filepath.Abs(customCADir)
 		if err != nil {
@@ -39,7 +39,16 @@ func getCertyDir() (string, error) {
 		return absPath, nil
 	}
 
-	// Default to ~/.certy
+	// Priority 2: Use CAROOT environment variable if set
+	if caroot := os.Getenv("CAROOT"); caroot != "" {
+		absPath, err := filepath.Abs(caroot)
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve CAROOT path: %w", err)
+		}
+		return absPath, nil
+	}
+
+	// Priority 3: Default to ~/.certy
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("failed to get home directory: %w", err)

@@ -90,8 +90,9 @@ All CA files are stored in `~/.certy/` by default.
 
 ### Custom CA Directory
 
-You can specify a custom directory for CA files using the `-ca-dir` flag:
+You can specify a custom directory for CA files in three ways (in order of priority):
 
+**1. Using the `-ca-dir` flag** (highest priority):
 ```bash
 # Install CA in a custom directory
 certy -ca-dir /path/to/ca -install
@@ -100,10 +101,39 @@ certy -ca-dir /path/to/ca -install
 certy -ca-dir /path/to/ca example.com
 ```
 
+**2. Using the `CAROOT` environment variable**:
+```bash
+# Set CAROOT for the current session
+export CAROOT=/path/to/ca
+certy -install
+certy example.com
+
+# Or set it per-command
+CAROOT=/path/to/ca certy -install
+```
+
+**3. Default location**: `~/.certy/` (lowest priority)
+
+**Check where your CA is located**:
+```bash
+# Print the current CA directory
+certy -CAROOT
+
+# With environment variable set
+export CAROOT=/tmp/my-ca
+certy -CAROOT
+# Output: /tmp/my-ca
+
+# Flag takes priority over environment variable
+certy -ca-dir ./custom -CAROOT
+# Output: /Users/you/path/to/custom
+```
+
 This is useful for:
 - Managing multiple CAs (e.g., dev, staging, production)
 - Storing CA files in a specific location (e.g., encrypted volume)
 - Team shared CA directories
+- Compatibility with tools that use `CAROOT` (like mkcert)
 
 ### Generate TLS Server Certificates
 

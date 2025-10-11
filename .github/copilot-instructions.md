@@ -53,7 +53,8 @@ Certificates follow this pattern based on first domain/identifier plus count:
 
 ### Supported Flags
 - `-install`: Initialize CA infrastructure (root + intermediate)
-- `-ca-dir DIR`: Custom directory for CA files (default: `~/.certy/`)
+- `-ca-dir DIR`: Custom directory for CA files (overrides `$CAROOT`, default: `~/.certy/`)
+- `-CAROOT`: Print the CA root directory path and exit
 - `-cert-file FILE`, `-key-file FILE`, `-p12-file FILE`: Custom output paths
 - `-client`: Generate client authentication certificate
 - `-ecdsa`: Use ECDSA P-256 instead of RSA 2048-bit for key generation
@@ -75,7 +76,10 @@ Smart auto-detection implemented in `cert.go`:
 - `gopkg.in/yaml.v3` for configuration parsing
 
 ### Storage & Persistence
-- **Default location**: `~/.certy/` (customizable via `-ca-dir`)
+- **Directory priority** (checked in this order):
+  1. `-ca-dir` flag (highest priority)
+  2. `$CAROOT` environment variable
+  3. `~/.certy/` default location (lowest priority)
 - **Custom directory**: Global `customCADir` variable set from flag, checked by `getCertyDir()`
 - **Files stored**:
   - `rootCA.pem`, `rootCA-key.pem` (root CA cert and private key)

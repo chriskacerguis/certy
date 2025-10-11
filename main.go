@@ -14,7 +14,8 @@ var customCADir string // Global variable for custom CA directory
 func main() {
 	// Define flags
 	installFlag := flag.Bool("install", false, "Create a rootCA with an intermediateCA")
-	caDirFlag := flag.String("ca-dir", "", "Custom directory for CA files (default: ~/.certy)")
+	caDirFlag := flag.String("ca-dir", "", "Custom directory for CA files (default: ~/.certy or $CAROOT)")
+	carootFlag := flag.Bool("CAROOT", false, "Print the CA root directory path and exit")
 	certFileFlag := flag.String("cert-file", "", "Customize the certificate output path")
 	keyFileFlag := flag.String("key-file", "", "Customize the key output path")
 	p12FileFlag := flag.String("p12-file", "", "Customize the PKCS#12 output path")
@@ -38,9 +39,19 @@ func main() {
 
 	flag.Parse()
 
-	// Set custom CA directory if provided
+	// Set custom CA directory if provided via -ca-dir flag
 	if *caDirFlag != "" {
 		customCADir = *caDirFlag
+	}
+
+	// Handle -CAROOT flag (print CA directory and exit)
+	if *carootFlag {
+		dir, err := getCertyDir()
+		if err != nil {
+			fatal("Failed to get CA directory: %v", err)
+		}
+		fmt.Println(dir)
+		return
 	}
 
 	// Validate flag conflicts
