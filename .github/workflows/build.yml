@@ -91,17 +91,21 @@ jobs:
         with:
           path: artifacts
 
-      - name: Create checksums
+      - name: Download all artifacts and create checksums
         run: |
           cd artifacts
-          # Copy binaries from artifact directories to parent
+          # Copy binaries from artifact directories to current directory
           for dir in */; do
             if [ -d "$dir" ]; then
+              echo "Copying from $dir"
               cp -v "$dir"* . 2>/dev/null || true
             fi
           done
-          # Create checksums for all binaries
+          # Remove the now-empty artifact directories
+          rm -rf */
+          # Create checksums for all binaries (now only files remain)
           sha256sum certy-* > SHA256SUMS
+          echo "=== SHA256SUMS ==="
           cat SHA256SUMS
 
       - name: Create Release
