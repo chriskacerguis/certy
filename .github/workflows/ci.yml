@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Verify dependencies
+        run: go mod verify
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run go fmt
+        run: |
+          if [ -n "$(gofmt -s -l .)" ]; then
+            echo "Go code is not formatted:"
+            gofmt -s -d .
+            exit 1
+          fi
+
+      - name: Test installation
+        run: |
+          go build -ldflags "-X main.version=ci-test" -o certy
+          ./certy -install
+          ls -la ~/.certy/
+
+      - name: Test certificate generation
+        run: |
+          ./certy example.com "*.example.com" 127.0.0.1 ::1
+          ./certy user@example.com
+          ./certy -client client.example.com
+          ./certy -ecdsa ecdsa.example.com
+          ./certy -pkcs12 pkcs12.example.com
+
+      - name: Verify certificates
+        run: |
+          openssl x509 -in example.com+3.pem -text -noout
+          openssl verify -CAfile ~/.certy/rootCA.pem -untrusted ~/.certy/intermediateCA.pem example.com+3.pem
+
+      - name: Test custom CA directory
+        run: |
+          ./certy -ca-dir ./test-ca -install
+          ./certy -ca-dir ./test-ca test.example.com
+          openssl verify -CAfile test-ca/rootCA.pem -untrusted test-ca/intermediateCA.pem test.example.com.pem
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+          args: --timeout=5m
+
+  build-matrix:
+    name: Build matrix test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        go: ['1.21']
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+
+      - name: Build
+        run: go build -v -ldflags "-X main.version=test" -o certy${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+
+      - name: Run help
+        run: ./certy${{ matrix.os == 'windows-latest' && '.exe' || '' }} -h

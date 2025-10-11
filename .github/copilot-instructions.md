@@ -16,7 +16,10 @@ certy/
 ├── pkcs12.go     # PKCS#12 export functionality
 ├── go.mod        # Dependencies: gopkg.in/yaml.v3, go-pkcs12
 └── .github/
-    └── copilot-instructions.md
+    ├── copilot-instructions.md
+    └── workflows/
+        ├── build.yml  # Multi-platform release builds (triggered on tags)
+        └── ci.yml     # Continuous integration tests
 ```
 
 ## Core Architecture
@@ -105,6 +108,21 @@ Hardcoded defaults (configurable via YAML):
 - Version embedding: Uses `main.version` variable
 - Cross-platform: Linux, macOS, Windows (no platform-specific code)
 - Binary size: ~5.7MB (includes all dependencies)
+
+### CI/CD Workflows
+**`build.yml`** - Automated release builds:
+- Triggered on: Git tags (e.g., `v1.0.1`) or manual workflow dispatch
+- Builds for: Linux (amd64, arm64, armv7), macOS (amd64, arm64), Windows (amd64, arm64)
+- Outputs: Platform-specific binaries with SHA256 checksums
+- Creates GitHub releases with installation instructions
+- Build flags: `-ldflags "-s -w -X main.version=$VERSION"` (stripped binaries)
+
+**`ci.yml`** - Continuous integration:
+- Triggered on: Push to main, pull requests
+- Tests: Build verification, certificate generation, chain validation
+- Linting: golangci-lint with 5-minute timeout
+- Matrix testing: Ubuntu, macOS, Windows with Go 1.21
+- Custom CA directory testing included
 
 ### Error Handling Patterns
 - Missing CA: Check `caExists()` before cert generation, prompt to run `-install`

@@ -1,5 +1,8 @@
 # Certy - Simple Certificate Authority CLI
 
+[![CI](https://github.com/chriskacerguis/certy/workflows/CI/badge.svg)](https://github.com/chriskacerguis/certy/actions)
+[![Release](https://github.com/chriskacerguis/certy/workflows/Build%20and%20Release/badge.svg)](https://github.com/chriskacerguis/certy/releases)
+
 A lightweight, user-friendly command-line tool for managing your own Certificate Authority and generating certificates for development and testing.
 
 ## Features
@@ -14,12 +17,40 @@ A lightweight, user-friendly command-line tool for managing your own Certificate
 
 ## Installation
 
+### Pre-built Binaries
+
+Download the latest release for your platform from the [releases page](https://github.com/chriskacerguis/certy/releases).
+
+**Linux (AMD64):**
+```bash
+wget https://github.com/chriskacerguis/certy/releases/latest/download/certy-linux-amd64
+chmod +x certy-linux-amd64
+sudo mv certy-linux-amd64 /usr/local/bin/certy
+```
+
+**macOS (Apple Silicon):**
+```bash
+wget https://github.com/chriskacerguis/certy/releases/latest/download/certy-darwin-arm64
+chmod +x certy-darwin-arm64
+sudo mv certy-darwin-arm64 /usr/local/bin/certy
+```
+
+**macOS (Intel):**
+```bash
+wget https://github.com/chriskacerguis/certy/releases/latest/download/certy-darwin-amd64
+chmod +x certy-darwin-amd64
+sudo mv certy-darwin-amd64 /usr/local/bin/certy
+```
+
+**Windows:**
+Download `certy-windows-amd64.exe` from the releases page and add it to your PATH.
+
 ### From Source
 
 ```bash
 git clone https://github.com/chriskacerguis/certy.git
 cd certy
-go build -ldflags "-X main.version=1.0.0" -o certy
+go build -ldflags "-X main.version=1.0.1" -o certy
 sudo mv certy /usr/local/bin/
 ```
 

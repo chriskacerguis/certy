@@ -1,0 +1,159 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build for multiple platforms
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          # Linux builds
+          - goos: linux
+            goarch: amd64
+            output: certy-linux-amd64
+          - goos: linux
+            goarch: arm64
+            output: certy-linux-arm64
+          - goos: linux
+            goarch: arm
+            goarm: 7
+            output: certy-linux-armv7
+          
+          # macOS builds
+          - goos: darwin
+            goarch: amd64
+            output: certy-darwin-amd64
+          - goos: darwin
+            goarch: arm64
+            output: certy-darwin-arm64
+          
+          # Windows builds
+          - goos: windows
+            goarch: amd64
+            output: certy-windows-amd64.exe
+          - goos: windows
+            goarch: arm64
+            output: certy-windows-arm64.exe
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Get version
+        id: get_version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          else
+            VERSION=$(git describe --tags --always --dirty)
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
+        run: |
+          go build -ldflags "-s -w -X main.version=${{ steps.get_version.outputs.version }}" -o ${{ matrix.output }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.output }}
+          path: ${{ matrix.output }}
+          retention-days: 7
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create checksums
+        run: |
+          cd artifacts
+          for dir in */; do
+            cd "$dir"
+            sha256sum * > checksums.txt
+            cd ..
+          done
+          find . -name "certy-*" -o -name "checksums.txt" | xargs -I {} cp {} ../
+          cd ..
+          sha256sum certy-* > SHA256SUMS
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            certy-*
+            SHA256SUMS
+          body: |
+            ## Certy ${{ github.ref_name }}
+            
+            ### Installation
+            
+            Download the appropriate binary for your platform:
+            
+            **Linux:**
+            ```bash
+            # AMD64
+            wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/certy-linux-amd64
+            chmod +x certy-linux-amd64
+            sudo mv certy-linux-amd64 /usr/local/bin/certy
+            
+            # ARM64
+            wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/certy-linux-arm64
+            chmod +x certy-linux-arm64
+            sudo mv certy-linux-arm64 /usr/local/bin/certy
+            ```
+            
+            **macOS:**
+            ```bash
+            # Intel
+            wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/certy-darwin-amd64
+            chmod +x certy-darwin-amd64
+            sudo mv certy-darwin-amd64 /usr/local/bin/certy
+            
+            # Apple Silicon (M1/M2/M3)
+            wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/certy-darwin-arm64
+            chmod +x certy-darwin-arm64
+            sudo mv certy-darwin-arm64 /usr/local/bin/certy
+            ```
+            
+            **Windows:**
+            Download the `.exe` file and add it to your PATH.
+            
+            ### Verify checksums
+            ```bash
+            sha256sum -c SHA256SUMS
+            ```
+            
+            ### Quick Start
+            ```bash
+            certy -install
+            certy example.com
+            ```
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
