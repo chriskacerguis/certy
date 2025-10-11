@@ -121,7 +121,7 @@ Hardcoded defaults (configurable via YAML):
 - Triggered on: Push to main, pull requests
 - Tests: Build verification, certificate generation, chain validation
 - Linting: golangci-lint with 5-minute timeout
-- Matrix testing: Ubuntu, macOS, Windows with Go 1.21
+- Matrix testing: Ubuntu, macOS, Windows with Go 1.23
 - Custom CA directory testing included
 
 ### Error Handling Patterns
