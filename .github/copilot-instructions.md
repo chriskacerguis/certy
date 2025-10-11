@@ -3,82 +3,189 @@
 ## Project Overview
 `certy` is a Go-based CLI tool for simplified certificate authority (CA) operations and certificate generation. The tool manages a root CA with intermediate CA and generates certificates for various use cases (TLS, client auth, S/MIME).
 
+**Current Status**: Fully implemented and functional (v1.0.1+)
+
+## Project Structure
+
+```
+certy/
+├── main.go       # CLI interface, flag parsing, command routing
+├── config.go     # Configuration management, storage paths, serial numbers
+├── ca.go         # CA generation (root + intermediate), key/cert persistence
+├── cert.go       # Certificate generation, SAN parsing, CSR handling
+├── pkcs12.go     # PKCS#12 export functionality
+├── go.mod        # Dependencies: gopkg.in/yaml.v3, go-pkcs12
+└── .github/
+    └── copilot-instructions.md
+```
+
 ## Core Architecture
 
 ### Certificate Hierarchy
-- **Root CA**: Created via `-install`, stored locally for signing intermediate CA
-- **Intermediate CA**: Signed by root CA, used for day-to-day certificate issuance
-- Both CAs should be created and stored during `-install` operation
+- **Root CA**: Self-signed, 10-year validity, created via `-install`
+- **Intermediate CA**: Signed by root CA, 5-year validity, used for all certificate issuance
+- **End-entity Certificates**: Signed by intermediate CA, 1-year validity
+- Certificate chain: Root CA → Intermediate CA → End-entity cert
 
 ### Certificate Types
-1. **TLS Server Certificates**: Default mode when passed domain names/IPs
-2. **S/MIME Certificates**: Auto-detected when input is an email address
+1. **TLS Server Certificates**: Default mode for domain names/IPs
+   - Key usage: Digital Signature, Key Encipherment
+   - Extended key usage: Server Authentication
+2. **S/MIME Certificates**: Auto-detected when input contains `@`
+   - Key usage: Digital Signature, Key Encipherment
+   - Extended key usage: Email Protection
 3. **Client Auth Certificates**: Enabled via `-client` flag
+   - Key usage: Digital Signature
+   - Extended key usage: Client Authentication
 4. **CSR-based Certificates**: Generated from existing CSR via `-csr` flag
 
 ## Command-Line Interface
 
 ### Output File Naming Convention
-Certificates should follow this pattern based on first domain/identifier plus count:
+Certificates follow this pattern based on first domain/identifier plus count:
 - Input: `example.com "*.example.com" example.test localhost 127.0.0.1 ::1`
 - Output: `./example.com+5.pem` (cert) and `./example.com+5-key.pem` (key)
 - The "+5" indicates 6 total identifiers (first domain + 5 additional)
+- Special characters sanitized: `@` → `-at-`, `*` → `wildcard`, `:` → `-`
 
 ### Supported Flags
 - `-install`: Initialize CA infrastructure (root + intermediate)
+- `-ca-dir DIR`: Custom directory for CA files (default: `~/.certy/`)
 - `-cert-file FILE`, `-key-file FILE`, `-p12-file FILE`: Custom output paths
 - `-client`: Generate client authentication certificate
-- `-ecdsa`: Use ECDSA instead of RSA for key generation
-- `-pkcs12`: Generate .p12/.pfx file for legacy applications
-- `-csr CSR`: Generate from CSR (conflicts with other flags except `-install` and `-cert-file`)
+- `-ecdsa`: Use ECDSA P-256 instead of RSA 2048-bit for key generation
+- `-pkcs12`: Generate .p12/.pfx file (no password protection)
+- `-csr CSR`: Generate from CSR (conflicts with all flags except `-install`, `-ca-dir`, and `-cert-file`)
 
 ### Input Detection Logic
-Implement smart detection:
+Smart auto-detection implemented in `cert.go`:
 - **Email pattern** (contains `@`): Generate S/MIME certificate
-- **IP addresses**: Add as IP SANs (both IPv4 and IPv6 like `127.0.0.1`, `::1`)
+- **IP addresses**: Parse and add as IP SANs (IPv4 and IPv6)
 - **Domain names**: Add as DNS SANs (including wildcards like `*.example.com`)
+- See `parseInputs()` function in `cert.go`
 
 ## Development Standards
 
 ### Key Dependencies
-Use Go's `crypto/x509`, `crypto/rsa`, `crypto/ecdsa`, `crypto/x509/pkix` for certificate operations. Consider `software.sslmate.com/src/go-pkcs12` for PKCS#12 support. For YAML config parsing, use `gopkg.in/yaml.v3`.
+- Go standard library: `crypto/x509`, `crypto/rsa`, `crypto/ecdsa`, `crypto/x509/pkix`
+- `software.sslmate.com/src/go-pkcs12` v0.4.0 for PKCS#12 support
+- `gopkg.in/yaml.v3` for configuration parsing
 
 ### Storage & Persistence
-- CA files should be stored in a standard location (e.g., `~/.certy/` or system-specific config dir)
-- Use Go's `os.UserConfigDir()` or `os.UserHomeDir()` for cross-platform compatibility
-- Store: `rootCA.pem`, `rootCA-key.pem`, `intermediateCA.pem`, `intermediateCA-key.pem`, `serial.txt`
-- **No password protection** for CA private keys (simplicity over security for this tool)
-- **Serial numbers**: Use sequential numbering stored in `serial.txt`, increment on each certificate issuance
+- **Default location**: `~/.certy/` (customizable via `-ca-dir`)
+- **Custom directory**: Global `customCADir` variable set from flag, checked by `getCertyDir()`
+- **Files stored**:
+  - `rootCA.pem`, `rootCA-key.pem` (root CA cert and private key)
+  - `intermediateCA.pem`, `intermediateCA-key.pem` (intermediate CA cert and private key)
+  - `config.yml` (YAML configuration)
+  - `serial.txt` (sequential serial number counter)
+- **No password protection** for CA private keys (design decision for simplicity)
+- **Serial numbers**: Sequential numbering in `serial.txt`, incremented via `getSerialNumber()` on each certificate issuance
 
 ### Configuration File
-- Support optional YAML config file at `~/.certy/config.yml` (or alongside CA files)
-- Keep it minimal - allow overriding defaults like validity periods, key sizes, algorithms
-- Example: `default_validity_days: 365`, `default_key_type: rsa`, `default_key_size: 2048`
-- Config values should be overridable by CLI flags
+Location: `~/.certy/config.yml` (or within custom `-ca-dir`)
+
+Default values (see `DefaultConfig()` in `config.go`):
+```yaml
+default_validity_days: 365          # End-entity certificate validity
+root_ca_validity_days: 3650         # Root CA validity (10 years)
+intermediate_ca_validity_days: 1825 # Intermediate CA validity (5 years)
+default_key_type: rsa               # Key algorithm (rsa or ecdsa)
+default_key_size: 2048              # RSA key size in bits
+```
 
 ### Certificate Validity Periods
-Define sensible defaults (configurable via YAML):
-- Root CA: 10 years (3650 days)
-- Intermediate CA: 5 years (1825 days)
-- End-entity certificates: 1 year (365 days)
+Hardcoded defaults (configurable via YAML):
+- Root CA: 3650 days (10 years)
+- Intermediate CA: 1825 days (5 years)
+- End-entity certificates: 365 days (1 year)
 
 ### Build & Distribution
-- Single binary distribution using `go build`
-- Consider embedding version info with build flags: `-ldflags "-X main.version=..."`
-- Target: cross-platform (Linux, macOS, Windows)
+- Single binary: `go build -ldflags "-X main.version=1.0.1" -o certy`
+- Version embedding: Uses `main.version` variable
+- Cross-platform: Linux, macOS, Windows (no platform-specific code)
+- Binary size: ~5.7MB (includes all dependencies)
 
-### Error Handling
-- Gracefully handle missing CA (prompt to run `-install` first)
-- Validate CSR format before processing
-- Check for flag conflicts (e.g., `-csr` with `-ecdsa`)
-- Fail fast with clear error messages
+### Error Handling Patterns
+- Missing CA: Check `caExists()` before cert generation, prompt to run `-install`
+- CSR validation: Parse and verify signature before issuing
+- Flag conflicts: Validate in `main()` before processing
+- Fail fast: Use `fatal()` helper for immediate exit with clear error messages
+
+### Key Functions Reference
+
+**`main.go`**:
+- `main()`: CLI entry point, flag parsing, command routing
+- `detectCertificateType()`: Determines cert type from inputs
+- `fatal()`: Error helper with exit
+
+**`config.go`**:
+- `getCertyDir()`: Returns CA directory (custom or default)
+- `loadConfig()`: Loads YAML config or returns defaults
+- `getSerialNumber()`: Reads and increments serial number
+- `caExists()`: Checks if CA files are present
+
+**`ca.go`**:
+- `installCA()`: Creates root + intermediate CA infrastructure
+- `generateRootCA()`: Generates self-signed root CA
+- `generateIntermediateCA()`: Generates intermediate CA signed by root
+- `loadIntermediateCA()`: Loads intermediate CA for signing
+- `saveKeyAndCert()`: Saves private key and certificate to PEM files
+
+**`cert.go`**:
+- `generateCertificate()`: Main certificate generation function
+- `parseInputs()`: Parses domains, IPs, emails into SANs
+- `determineCommonName()`: Determines CN based on cert type
+- `determineOutputPaths()`: Generates output filenames
+- `generateFromCSR()`: Issues certificate from CSR
+- `saveCertificate()`, `savePrivateKey()`: PEM file writers
+
+**`pkcs12.go`**:
+- `generatePKCS12()`: Creates .p12 file from cert + key (no password)
 
 ## Testing Approach
-- Test certificate generation for each type (TLS, client, S/MIME)
-- Verify certificate chain validation (root → intermediate → end-entity)
-- Test both RSA and ECDSA key generation
-- Validate SAN parsing for mixed domains/IPs
-- Test PKCS#12 file generation and password protection
+Validated scenarios:
+- ✅ CA installation in default and custom directories
+- ✅ TLS certificates with multiple DNS names and IPs
+- ✅ S/MIME certificates for email addresses
+- ✅ Client authentication certificates
+- ✅ ECDSA key generation (P-256 curve)
+- ✅ PKCS#12 export with certificate chain
+- ✅ Certificate chain validation (root → intermediate → end-entity)
+- ✅ Sequential serial number tracking
+- ✅ Filename sanitization for special characters
+
+## Common Workflows
+
+### Initialize New CA
+```bash
+certy -install                    # Default: ~/.certy/
+certy -ca-dir ./custom-ca -install  # Custom directory
+```
+
+### Generate Certificates
+```bash
+certy example.com                                    # Single domain
+certy example.com "*.example.com" 127.0.0.1 ::1     # Multi-domain with IPs
+certy user@example.com                               # S/MIME (auto-detected)
+certy -client client.example.com                     # Client auth
+certy -ecdsa secure.example.com                      # ECDSA key
+certy -pkcs12 app.example.com                        # With PKCS#12 export
+certy -ca-dir ./custom-ca example.com                # Use custom CA
+```
+
+### Verify Certificates
+```bash
+openssl x509 -in cert.pem -text -noout
+openssl verify -CAfile ~/.certy/rootCA.pem -untrusted ~/.certy/intermediateCA.pem cert.pem
+```
 
 ## Reference
-See `PROMPT.md` for the original specification and example usage patterns.
+- `PROMPT.md`: Original specification
+- `README.md`: User-facing documentation with examples
+
+## Security Considerations
+⚠️ **This tool is for development/testing only**:
+- CA private keys are stored unencrypted
+- PKCS#12 files use empty passwords
+- Not suitable for production use

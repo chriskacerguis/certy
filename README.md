@@ -55,7 +55,24 @@ This creates:
 - Configuration file at `~/.certy/config.yml`
 - Serial number tracker
 
-All CA files are stored in `~/.certy/`.
+All CA files are stored in `~/.certy/` by default.
+
+### Custom CA Directory
+
+You can specify a custom directory for CA files using the `-ca-dir` flag:
+
+```bash
+# Install CA in a custom directory
+certy -ca-dir /path/to/ca -install
+
+# Use custom CA directory for certificate generation
+certy -ca-dir /path/to/ca example.com
+```
+
+This is useful for:
+- Managing multiple CAs (e.g., dev, staging, production)
+- Storing CA files in a specific location (e.g., encrypted volume)
+- Team shared CA directories
 
 ### Generate TLS Server Certificates
 
@@ -157,6 +174,20 @@ certy -pkcs12 user@example.com
 
 ```bash
 certy -ecdsa -pkcs12 modern.example.com
+```
+
+### Multiple CA Directories
+
+```bash
+# Create separate CAs for different environments
+certy -ca-dir ./ca-dev -install
+certy -ca-dir ./ca-staging -install
+certy -ca-dir ./ca-prod -install
+
+# Generate certificates for each environment
+certy -ca-dir ./ca-dev dev.example.com
+certy -ca-dir ./ca-staging staging.example.com
+certy -ca-dir ./ca-prod example.com
 ```
 
 ## Certificate Chain

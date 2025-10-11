@@ -30,6 +30,16 @@ func DefaultConfig() *Config {
 
 // getCertyDir returns the directory where certy stores its files
 func getCertyDir() (string, error) {
+	// Use custom directory if specified
+	if customCADir != "" {
+		absPath, err := filepath.Abs(customCADir)
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve CA directory path: %w", err)
+		}
+		return absPath, nil
+	}
+
+	// Default to ~/.certy
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("failed to get home directory: %w", err)

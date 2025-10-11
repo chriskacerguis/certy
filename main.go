@@ -9,10 +9,12 @@ import (
 )
 
 var version = "dev"
+var customCADir string // Global variable for custom CA directory
 
 func main() {
 	// Define flags
 	installFlag := flag.Bool("install", false, "Create a rootCA with an intermediateCA")
+	caDirFlag := flag.String("ca-dir", "", "Custom directory for CA files (default: ~/.certy)")
 	certFileFlag := flag.String("cert-file", "", "Customize the certificate output path")
 	keyFileFlag := flag.String("key-file", "", "Customize the key output path")
 	p12FileFlag := flag.String("p12-file", "", "Customize the PKCS#12 output path")
@@ -35,6 +37,11 @@ func main() {
 	}
 
 	flag.Parse()
+
+	// Set custom CA directory if provided
+	if *caDirFlag != "" {
+		customCADir = *caDirFlag
+	}
 
 	// Validate flag conflicts
 	if *csrFlag != "" {
@@ -93,7 +100,7 @@ func main() {
 
 		// Determine certificate type and generate
 		certType := detectCertificateType(inputs, *clientFlag)
-		
+
 		certPath, keyPath, err = generateCertificate(inputs, certType, *ecdsaFlag, *certFileFlag, *keyFileFlag, cfg)
 		if err != nil {
 			fatal("Failed to generate certificate: %v", err)
@@ -128,12 +135,12 @@ func detectCertificateType(inputs []string, clientAuth bool) CertificateType {
 	if len(inputs) > 0 && strings.Contains(inputs[0], "@") {
 		return CertTypeSMIME
 	}
-	
+
 	// Client authentication
 	if clientAuth {
 		return CertTypeClient
 	}
-	
+
 	// Default to TLS server certificate
 	return CertTypeTLS
 }
