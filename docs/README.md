@@ -28,10 +28,21 @@ This directory contains all documentation for the certy project.
   - Vulnerability reporting
   - Response process
 
+- **[PRODUCTION_READINESS.md](PRODUCTION_READINESS.md)** - Production readiness roadmap
+  - Critical security issues to address
+  - Required features for production
+  - Implementation priorities
+  - Architecture recommendations
+  - Estimated effort and timeline
+
 - **[RELEASE.md](RELEASE.md)** - Release notes and changelog
   - Version history
   - Breaking changes
   - New features
+
+- **[REORGANIZATION.md](REORGANIZATION.md)** - Project reorganization summary
+  - Directory structure changes
+  - Files moved and created
 
 ## Main Documentation
 
