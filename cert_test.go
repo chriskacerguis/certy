@@ -10,11 +10,11 @@ import (
 
 func TestParseInputs(t *testing.T) {
 	tests := []struct {
-		name              string
-		inputs            []string
-		expectedDNS       []string
-		expectedIPs       int
-		expectedEmails    []string
+		name           string
+		inputs         []string
+		expectedDNS    []string
+		expectedIPs    int
+		expectedEmails []string
 	}{
 		{
 			name:           "single domain",
@@ -59,11 +59,11 @@ func TestParseInputs(t *testing.T) {
 			expectedEmails: []string{"user@example.com"},
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			dnsNames, ipAddresses, emailAddresses := parseInputs(tt.inputs)
-			
+
 			if len(dnsNames) != len(tt.expectedDNS) {
 				t.Errorf("Expected %d DNS names, got %d", len(tt.expectedDNS), len(dnsNames))
 			}
@@ -72,11 +72,11 @@ func TestParseInputs(t *testing.T) {
 					t.Errorf("Expected DNS name %s, got %s", dns, dnsNames[i])
 				}
 			}
-			
+
 			if len(ipAddresses) != tt.expectedIPs {
 				t.Errorf("Expected %d IP addresses, got %d", tt.expectedIPs, len(ipAddresses))
 			}
-			
+
 			if len(emailAddresses) != len(tt.expectedEmails) {
 				t.Errorf("Expected %d email addresses, got %d", len(tt.expectedEmails), len(emailAddresses))
 			}
@@ -121,7 +121,7 @@ func TestDetermineCommonName(t *testing.T) {
 			expected: "example.com",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cn := determineCommonName(tt.inputs, tt.certType)
@@ -182,7 +182,7 @@ func TestDetermineOutputPaths(t *testing.T) {
 			expectedKey:  "./user-at-example.com-key.pem",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			certPath, keyPath := determineOutputPaths(tt.inputs, tt.certFile, tt.keyFile)
@@ -209,7 +209,7 @@ func TestSanitizeFilename(t *testing.T) {
 		{"with/slash", "with-slash"},
 		{"with\\backslash", "with-backslash"},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
 			result := sanitizeFilename(tt.input)
@@ -224,48 +224,48 @@ func TestSaveAndLoadCertificate(t *testing.T) {
 	// Create temp directory
 	tmpDir := t.TempDir()
 	certPath := filepath.Join(tmpDir, "test.pem")
-	
+
 	// Create a minimal certificate for testing
 	// We'll use a real certificate from CA generation
 	customCADir = tmpDir
 	defer func() { customCADir = "" }()
-	
+
 	// Install CA first
 	if err := installCA(); err != nil {
 		t.Fatalf("Failed to install CA: %v", err)
 	}
-	
+
 	// Load intermediate CA
 	_, caCert, err := loadIntermediateCA()
 	if err != nil {
 		t.Fatalf("Failed to load CA: %v", err)
 	}
-	
+
 	// Save certificate
 	if err := saveCertificate(caCert, certPath); err != nil {
 		t.Fatalf("Failed to save certificate: %v", err)
 	}
-	
+
 	// Verify file exists
 	if _, err := os.Stat(certPath); os.IsNotExist(err) {
 		t.Error("Certificate file was not created")
 	}
-	
+
 	// Load and verify certificate
 	certData, err := os.ReadFile(certPath)
 	if err != nil {
 		t.Fatalf("Failed to read certificate: %v", err)
 	}
-	
+
 	block, _ := pem.Decode(certData)
 	if block == nil {
 		t.Fatal("Failed to decode PEM")
 	}
-	
+
 	if block.Type != "CERTIFICATE" {
 		t.Errorf("Expected CERTIFICATE block, got %s", block.Type)
 	}
-	
+
 	_, err = x509.ParseCertificate(block.Bytes)
 	if err != nil {
 		t.Errorf("Failed to parse certificate: %v", err)
@@ -304,7 +304,7 @@ func TestDetectCertificateType(t *testing.T) {
 			expected:   CertTypeTLS,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			certType := detectCertificateType(tt.inputs, tt.clientAuth)
@@ -320,18 +320,18 @@ func TestGenerateCertificate(t *testing.T) {
 	tmpDir := t.TempDir()
 	customCADir = tmpDir
 	defer func() { customCADir = "" }()
-	
+
 	// Install CA
 	if err := installCA(); err != nil {
 		t.Fatalf("Failed to install CA: %v", err)
 	}
-	
+
 	// Load config
 	cfg, err := loadConfig()
 	if err != nil {
 		t.Fatalf("Failed to load config: %v", err)
 	}
-	
+
 	tests := []struct {
 		name         string
 		inputs       []string
@@ -393,18 +393,18 @@ func TestGenerateCertificate(t *testing.T) {
 			},
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			certPath, keyPath, err := generateCertificate(tt.inputs, tt.certType, tt.useECDSA, "", "", cfg)
 			if err != nil {
 				t.Fatalf("Failed to generate certificate: %v", err)
 			}
-			
+
 			// Clean up after test
 			defer os.Remove(certPath)
 			defer os.Remove(keyPath)
-			
+
 			// Verify files exist
 			if _, err := os.Stat(certPath); os.IsNotExist(err) {
 				t.Error("Certificate file was not created")
@@ -412,32 +412,32 @@ func TestGenerateCertificate(t *testing.T) {
 			if _, err := os.Stat(keyPath); os.IsNotExist(err) {
 				t.Error("Key file was not created")
 			}
-			
+
 			// Load and validate certificate
 			certData, err := os.ReadFile(certPath)
 			if err != nil {
 				t.Fatalf("Failed to read certificate: %v", err)
 			}
-			
+
 			block, _ := pem.Decode(certData)
 			if block == nil {
 				t.Fatal("Failed to decode certificate PEM")
 			}
-			
+
 			cert, err := x509.ParseCertificate(block.Bytes)
 			if err != nil {
 				t.Fatalf("Failed to parse certificate: %v", err)
 			}
-			
+
 			// Verify common properties
 			if cert.Subject.CommonName == "" {
 				t.Error("Common name is empty")
 			}
-			
+
 			if cert.IsCA {
 				t.Error("Certificate should not be a CA")
 			}
-			
+
 			// Run custom validation
 			if tt.validateFunc != nil {
 				tt.validateFunc(t, cert)
