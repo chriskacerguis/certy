@@ -141,7 +141,10 @@ func TestGenerateFromCSRWithCustomOutputPath(t *testing.T) {
 		Type:  "CERTIFICATE REQUEST",
 		Bytes: csrDER,
 	}
-	pem.Encode(csrFile, csrPEM)
+	if err := pem.Encode(csrFile, csrPEM); err != nil {
+		csrFile.Close()
+		t.Fatalf("Failed to encode CSR: %v", err)
+	}
 	csrFile.Close()
 
 	// Generate certificate with custom output path
@@ -231,7 +234,10 @@ func TestGenerateFromCSRWithIPsAndEmails(t *testing.T) {
 		Type:  "CERTIFICATE REQUEST",
 		Bytes: csrDER,
 	}
-	pem.Encode(csrFile, csrPEM)
+	if err := pem.Encode(csrFile, csrPEM); err != nil {
+		csrFile.Close()
+		t.Fatalf("Failed to encode CSR: %v", err)
+	}
 	csrFile.Close()
 
 	// Generate certificate from CSR

@@ -355,6 +355,14 @@ Verify the certificate chain:
 openssl verify -CAfile ~/.certy/rootCA.pem -untrusted ~/.certy/intermediateCA.pem certificate.pem
 ```
 
+## Documentation
+
+Additional documentation is available in the [`docs/`](docs/) directory:
+- **[Testing Guide](docs/TESTING.md)** - Running and writing tests
+- **[Test Coverage](docs/TEST_COVERAGE.md)** - Coverage statistics and goals
+- **[Security Policy](./SECURITY.md)** - Security considerations and vulnerability reporting
+- **[Release Notes](docs/RELEASE.md)** - Version history and changelog
+
 ## License
 
 MIT License - see LICENSE file for details.
