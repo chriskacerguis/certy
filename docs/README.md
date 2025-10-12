@@ -21,6 +21,13 @@ This directory contains all documentation for the certy project.
   - Test statistics
   - Verification steps
 
+### Configuration
+- **[CONFIG_VALIDATION.md](CONFIG_VALIDATION.md)** - Configuration validation (v1.0.2+)
+  - Validation rules for all config parameters
+  - Bounds and constraints
+  - Error examples
+  - Test coverage
+
 ### Project Information
 - **[SECURITY.md](SECURITY.md)** - Security policy and considerations
   - Supported versions
@@ -29,6 +36,7 @@ This directory contains all documentation for the certy project.
   - Response process
 
 - **[PRODUCTION_READINESS.md](PRODUCTION_READINESS.md)** - Production readiness roadmap
+  - Completed production features
   - Critical security issues to address
   - Required features for production
   - Implementation priorities

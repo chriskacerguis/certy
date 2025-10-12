@@ -101,6 +101,15 @@ default_key_type: rsa               # Key algorithm (rsa or ecdsa)
 default_key_size: 2048              # RSA key size in bits
 ```
 
+**Configuration Validation** (v1.0.2+):
+All config parameters are validated on load and save via `validateConfig()`:
+- Validity periods: Enforces min/max bounds and hierarchy constraints
+- Key types: Only `rsa` or `ecdsa` allowed
+- Key sizes: RSA (2048/3072/4096), ECDSA (256/384/521)
+- See `docs/CONFIG_VALIDATION.md` for complete validation rules
+default_key_size: 2048              # RSA key size in bits
+```
+
 ### Certificate Validity Periods
 Hardcoded defaults (configurable via YAML):
 - Root CA: 3650 days (10 years)
@@ -143,7 +152,9 @@ Hardcoded defaults (configurable via YAML):
 
 **`config.go`**:
 - `getCertyDir()`: Returns CA directory (custom or default)
-- `loadConfig()`: Loads YAML config or returns defaults
+- `loadConfig()`: Loads YAML config or returns defaults (with validation)
+- `saveConfig()`: Saves config to YAML file (with validation)
+- `validateConfig()`: Validates all config parameters (v1.0.2+)
 - `getSerialNumber()`: Reads and increments serial number
 - `caExists()`: Checks if CA files are present
 
@@ -166,6 +177,16 @@ Hardcoded defaults (configurable via YAML):
 - `generatePKCS12()`: Creates .p12 file from cert + key (no password)
 
 ## Testing Approach
+**Test Coverage:** 64.3% code coverage with 98 comprehensive test cases
+
+**Test Files:**
+- `ca_test.go` - CA generation and certificate chain tests
+- `cert_test.go` - Certificate generation and SAN parsing tests
+- `config_test.go` - Configuration management and validation tests (23 subtests)
+- `csr_test.go` - CSR-based certificate generation tests
+- `integration_test.go` - End-to-end workflow tests
+- `pkcs12_test.go` - PKCS#12 export tests
+
 Validated scenarios:
 - ✅ CA installation in default and custom directories
 - ✅ TLS certificates with multiple DNS names and IPs
@@ -174,6 +195,7 @@ Validated scenarios:
 - ✅ ECDSA key generation (P-256 curve)
 - ✅ PKCS12 export with certificate chain
 - ✅ Certificate chain validation (root → intermediate → end-entity)
+- ✅ Configuration validation (all parameter bounds and constraints)
 - ✅ Sequential serial number tracking
 - ✅ Filename sanitization for special characters
 

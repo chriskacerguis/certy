@@ -40,9 +40,105 @@ Certy is currently designed and marketed as a **development and testing tool onl
 
 **Current State:**
 ```go
+# Production Readiness Roadmap for Certy
+
+## Current Status: Development/Testing Tool ⚠️
+
+Certy is currently designed and marketed as a **development and testing tool only**. To make it production-ready, several critical security and operational features need to be implemented.
+
+---
+
+## ✅ Completed Production Features
+
+### Configuration Validation ✅
+
+**Status:** Implemented in v1.0.2+
+
+**What Was Added:**
+- Comprehensive validation of all config.yml parameters
+- Validates on both load and save operations
+- Prevents invalid configurations from being created or persisted
+
+**Validation Rules:**
+```
+Validity Periods:
+  - default_validity_days: 1-825 days (max 2+ years)
+  - root_ca_validity_days: 365-7300 days (1-20 years)
+  - intermediate_ca_validity_days: 365-3650 days (1-10 years)
+  - Hierarchy check: intermediate < root validity
+
+Key Types:
+  - Must be 'rsa' or 'ecdsa' (case-sensitive)
+
+Key Sizes:
+  - RSA: 2048, 3072, or 4096 bits only
+  - ECDSA: 256 (P-256), 384 (P-384), or 521 (P-521) only
+```
+
+**Test Coverage:**
+- 18 validation test cases in `TestValidateConfig`
+- Tests for all boundary conditions and error cases
+- Integration tests verify validation in load/save paths
+
+**Files Modified:**
+- `config.go`: Added `validateConfig()` function
+- `config_test.go`: Added comprehensive validation tests
+
+---
+
+## Critical Security Issues (MUST FIX)
+
+### 1. Private Key Encryption 🔴 **CRITICAL**
+
+**Current State:**
+- All CA and private keys stored **unencrypted** on disk
+- File permissions are 0600 (better than nothing, but not enough)
+
+**Required Changes:**
+```go
+// Add password/passphrase protection for CA keys
+- Encrypt CA private keys using AES-256-GCM
+- Prompt for passphrase during -install
+- Prompt for passphrase when signing certificates
+- Support password from environment variable or file for automation
+```
+
+**Implementation:**
+- Add `crypto/aes`, `crypto/cipher` for encryption
+- Use PBKDF2 or Argon2 for key derivation
+- Store encrypted keys with salt and IV
+- Add `-password-file` flag option
+
+**Files to Modify:**
+- `ca.go`: `saveKeyAndCert()`, `loadIntermediateCA()`
+- `config.go`: Add password configuration options
+- `main.go`: Add password prompting
+
+---
+
+### 2. PKCS#12 Password Protection 🔴 **CRITICAL**
+
+**Current State:**
+```go
 // pkcs12.go line 86
 pfxData, err := pkcs12.Modern.Encode(privateKey, cert, []*x509.Certificate{intCACert}, "")
 //                                                                                      ^^
+//                                                                           EMPTY PASSWORD!
+```
+
+**Required Changes:**
+- **Never** allow empty passwords in production mode
+- Add `-p12-password` flag
+- Prompt for password if not provided
+- Support password from stdin or environment variable
+
+**Implementation:**
+```go
+func generatePKCS12(certPath, keyPath, p12Path, password string) error {
+    if password == "" {
+        return fmt.Errorf("PKCS#12 password required in production mode")
+    }
+````
 //                                                                           EMPTY PASSWORD!
 ```
 
