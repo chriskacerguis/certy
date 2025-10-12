@@ -48,6 +48,23 @@ jobs:
             exit 1
           fi
 
+      - name: Run tests
+        run: go test -v -race ./...
+
+      - name: Run tests with coverage
+        run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+
+      - name: Display coverage
+        run: go tool cover -func=coverage.out
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.out
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
       - name: Test installation
         run: |
           go build -ldflags "-X main.version=ci-test" -o certy
