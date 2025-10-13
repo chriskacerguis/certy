@@ -86,6 +86,47 @@ Key Sizes:
 
 ---
 
+### PKCS#12 Password Protection ✅
+
+**Status:** Implemented in v1.0.3+
+
+**What Was Added:**
+- Optional password protection for PKCS#12 files
+- New `-p12-password` flag to specify password
+- Maintains backward compatibility - empty password (no protection) still supported
+- Password is used directly in PKCS#12 encoding
+
+**Usage Examples:**
+```bash
+# No password (backward compatible)
+certy -pkcs12 example.com
+
+# With password protection
+certy -pkcs12 -p12-password "MySecurePassword!" example.com
+
+# From environment variable
+export P12_PASSWORD="MySecurePassword!"
+certy -pkcs12 -p12-password "$P12_PASSWORD" example.com
+```
+
+**Test Coverage:**
+- 2 new test cases: `TestGeneratePKCS12WithPassword` and `TestGeneratePKCS12WithEmptyPassword`
+- Tests verify password-protected files cannot be decoded without correct password
+- Tests verify backward compatibility with no-password mode
+
+**Files Modified:**
+- `main.go`: Added `-p12-password` flag
+- `pkcs12.go`: Updated `generatePKCS12()` to accept password parameter
+- `pkcs12_test.go`: Added password protection tests
+- `integration_test.go`: Updated function calls
+
+**Security Note:**
+- Password is passed as command-line argument (visible in process list)
+- For production, consider using environment variables or prompting for password
+- This implementation provides the flexibility to use passwords when needed
+
+---
+
 ## Critical Security Issues (MUST FIX)
 
 ### 1. Private Key Encryption 🔴 **CRITICAL**
@@ -120,9 +161,13 @@ Key Sizes:
 
 **Current State:**
 ```go
-// pkcs12.go line 86
-pfxData, err := pkcs12.Modern.Encode(privateKey, cert, []*x509.Certificate{intCACert}, "")
-//                                                                                      ^^
+- `ca.go`: `saveKeyAndCert()`, `loadIntermediateCA()`
+- `config.go`: Add password configuration options
+- `main.go`: Add password prompting
+
+---
+
+### 2. Certificate Revocation List (CRL) 🔴 **CRITICAL**
 //                                                                           EMPTY PASSWORD!
 ```
 
@@ -198,7 +243,7 @@ type CertificateRecord struct {
 
 ---
 
-### 4. Key Storage Backend 🟡 **HIGH**
+### 3. Key Storage Backend 🟡 **HIGH**
 
 **Current State:**
 - Everything stored in plain files
@@ -230,7 +275,7 @@ keystore:
 
 ---
 
-### 5. Audit Logging 🟡 **HIGH**
+### 4. Audit Logging 🟡 **HIGH**
 
 **Current State:**
 - **No audit trail** of certificate operations
@@ -269,7 +314,7 @@ func logAuditEvent(event AuditLog) error {
 
 ---
 
-### 6. Certificate Validation & Policies 🟡 **MEDIUM**
+### 5. Certificate Validation & Policies 🟡 **MEDIUM**
 
 **Current State:**
 - Minimal validation of certificate requests
@@ -302,7 +347,7 @@ func validateCertificateRequest(req *CertRequest, policy *CertificatePolicy) err
 
 ---
 
-### 7. File Integrity & Permissions 🟡 **MEDIUM**
+### 6. File Integrity & Permissions 🟡 **MEDIUM**
 
 **Current State:**
 - Basic file permissions (0600 for keys)
@@ -333,7 +378,7 @@ func verifyCAIntegrity() error {
 
 ## Operational Improvements (SHOULD HAVE)
 
-### 8. Certificate Database 🟢 **MEDIUM**
+### 7. Certificate Database 🟢 **MEDIUM**
 
 **Current State:**
 - Only `serial.txt` tracking
@@ -364,7 +409,7 @@ CREATE TABLE certificates (
 
 ---
 
-### 9. Configuration Management 🟢 **MEDIUM**
+### 8. Configuration Management 🟢 **MEDIUM**
 
 **Current State:**
 - Simple YAML config
@@ -398,7 +443,7 @@ security:
 
 ---
 
-### 10. Certificate Transparency 🟢 **LOW**
+### 9. Certificate Transparency 🟢 **LOW**
 
 **Current State:**
 - No CT logging
@@ -410,7 +455,7 @@ security:
 
 ---
 
-### 11. Monitoring & Alerts 🟢 **MEDIUM**
+### 10. Monitoring & Alerts 🟢 **MEDIUM**
 
 **Current State:**
 - No monitoring
@@ -450,26 +495,28 @@ security:
 ## Implementation Priority
 
 ### Phase 1: Security Foundations (Critical)
-1. ✅ **Week 1-2:** Private key encryption
-2. ✅ **Week 2:** PKCS#12 passwords
-3. ✅ **Week 3:** Audit logging
-4. ✅ **Week 4:** CRL support
+1. 🔄 **Week 1-2:** Private key encryption
+2. ✅ **Week 2:** PKCS#12 passwords (v1.0.3+)
+3. 🔄 **Week 3:** Audit logging
+4. 🔄 **Week 4:** CRL support
 
 ### Phase 2: Storage & Management (High)
-5. ✅ **Week 5-6:** Certificate database
-6. ✅ **Week 7:** HSM/KMS support
-7. ✅ **Week 8:** Certificate policies
+5. 🔄 **Week 5-6:** Certificate database
+6. 🔄 **Week 7:** HSM/KMS support
+7. 🔄 **Week 8:** Certificate policies
 
 ### Phase 3: Operations (Medium)
-8. ✅ **Week 9:** Configuration improvements
-9. ✅ **Week 10:** Monitoring & alerts
-10. ✅ **Week 11-12:** Testing & validation
+8. ✅ **Week 9:** Configuration validation (v1.0.2+)
+9. 🔄 **Week 10:** Monitoring & alerts
+10. 🔄 **Week 11-12:** Testing & validation
 
 ### Phase 4: Optional Enhancements
 11. Certificate Transparency
 12. OCSP responder
 13. API server mode
 14. ACME protocol support
+
+**Legend:** ✅ = Completed | 🔄 = Not Started
 
 ---
 

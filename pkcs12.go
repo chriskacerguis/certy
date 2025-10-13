@@ -10,7 +10,8 @@ import (
 )
 
 // generatePKCS12 generates a PKCS#12 file from a certificate and private key
-func generatePKCS12(certPath, keyPath, p12Path string) error {
+// password parameter is optional - pass empty string for no password protection
+func generatePKCS12(certPath, keyPath, p12Path, password string) error {
 	// Read certificate
 	certData, err := os.ReadFile(certPath)
 	if err != nil {
@@ -76,8 +77,8 @@ func generatePKCS12(certPath, keyPath, p12Path string) error {
 	}
 
 	// Create PKCS#12 data with the certificate chain
-	// Note: Using empty password for simplicity (no password protection)
-	pfxData, err := pkcs12.Modern.Encode(privateKey, cert, []*x509.Certificate{intCACert}, "")
+	// If password is empty, no password protection is used
+	pfxData, err := pkcs12.Modern.Encode(privateKey, cert, []*x509.Certificate{intCACert}, password)
 	if err != nil {
 		return fmt.Errorf("failed to encode PKCS#12: %w", err)
 	}

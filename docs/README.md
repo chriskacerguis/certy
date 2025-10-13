@@ -28,6 +28,12 @@ This directory contains all documentation for the certy project.
   - Error examples
   - Test coverage
 
+- **[PKCS12_PASSWORD.md](PKCS12_PASSWORD.md)** - PKCS#12 password protection (v1.0.3+)
+  - Optional password protection for PKCS#12 files
+  - Usage examples and security considerations
+  - Backward compatibility
+  - Test coverage
+
 ### Project Information
 - **[SECURITY.md](SECURITY.md)** - Security policy and considerations
   - Supported versions

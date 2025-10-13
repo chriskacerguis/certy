@@ -19,6 +19,7 @@ func main() {
 	certFileFlag := flag.String("cert-file", "", "Customize the certificate output path")
 	keyFileFlag := flag.String("key-file", "", "Customize the key output path")
 	p12FileFlag := flag.String("p12-file", "", "Customize the PKCS#12 output path")
+	p12PasswordFlag := flag.String("p12-password", "", "Password for PKCS#12 file (empty for no password)")
 	clientFlag := flag.Bool("client", false, "Generate a certificate for client authentication")
 	ecdsaFlag := flag.Bool("ecdsa", false, "Generate a certificate with an ECDSA key")
 	pkcs12Flag := flag.Bool("pkcs12", false, "Generate a PKCS#12 file")
@@ -128,7 +129,7 @@ func main() {
 				p12Path = strings.TrimSuffix(certPath, filepath.Ext(certPath)) + ".p12"
 			}
 
-			if err := generatePKCS12(certPath, keyPath, p12Path); err != nil {
+			if err := generatePKCS12(certPath, keyPath, p12Path, *p12PasswordFlag); err != nil {
 				fatal("Failed to generate PKCS#12 file: %v", err)
 			}
 			fmt.Printf("✓ PKCS#12 file generated: %s\n", p12Path)

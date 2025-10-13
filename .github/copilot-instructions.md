@@ -174,7 +174,7 @@ Hardcoded defaults (configurable via YAML):
 - `saveCertificate()`, `savePrivateKey()`: PEM file writers
 
 **`pkcs12.go`**:
-- `generatePKCS12()`: Creates .p12 file from cert + key (no password)
+- `generatePKCS12()`: Creates .p12 file from cert + key (optional password protection, v1.0.3+)
 
 ## Testing Approach
 **Test Coverage:** 64.3% code coverage with 98 comprehensive test cases
@@ -185,7 +185,7 @@ Hardcoded defaults (configurable via YAML):
 - `config_test.go` - Configuration management and validation tests (23 subtests)
 - `csr_test.go` - CSR-based certificate generation tests
 - `integration_test.go` - End-to-end workflow tests
-- `pkcs12_test.go` - PKCS#12 export tests
+- `pkcs12_test.go` - PKCS12 export tests
 
 Validated scenarios:
 - ✅ CA installation in default and custom directories

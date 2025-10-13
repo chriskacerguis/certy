@@ -38,7 +38,7 @@ func TestGeneratePKCS12(t *testing.T) {
 
 	// Generate PKCS#12
 	p12Path := filepath.Join(tmpDir, "test.p12")
-	if err := generatePKCS12(certPath, keyPath, p12Path); err != nil {
+	if err := generatePKCS12(certPath, keyPath, p12Path, ""); err != nil {
 		t.Fatalf("Failed to generate PKCS#12: %v", err)
 	}
 	defer os.Remove(p12Path)
@@ -120,7 +120,7 @@ func TestGeneratePKCS12WithECDSA(t *testing.T) {
 
 	// Generate PKCS#12
 	p12Path := filepath.Join(tmpDir, "test-ecdsa.p12")
-	if err := generatePKCS12(certPath, keyPath, p12Path); err != nil {
+	if err := generatePKCS12(certPath, keyPath, p12Path, ""); err != nil {
 		t.Fatalf("Failed to generate PKCS#12: %v", err)
 	}
 	defer os.Remove(p12Path)
@@ -182,7 +182,7 @@ func TestPKCS12FilePermissions(t *testing.T) {
 
 	// Generate PKCS#12
 	p12Path := filepath.Join(tmpDir, "test.p12")
-	if err := generatePKCS12(certPath, keyPath, p12Path); err != nil {
+	if err := generatePKCS12(certPath, keyPath, p12Path, ""); err != nil {
 		t.Fatalf("Failed to generate PKCS#12: %v", err)
 	}
 	defer os.Remove(p12Path)
@@ -197,5 +197,134 @@ func TestPKCS12FilePermissions(t *testing.T) {
 	expected := os.FileMode(0600)
 	if mode != expected {
 		t.Errorf("Expected PKCS#12 file permissions %v, got %v", expected, mode)
+	}
+}
+
+func TestGeneratePKCS12WithPassword(t *testing.T) {
+	// Create temp directory
+	tmpDir := t.TempDir()
+	customCADir = tmpDir
+	defer func() { customCADir = "" }()
+
+	// Install CA
+	if err := installCA(); err != nil {
+		t.Fatalf("Failed to install CA: %v", err)
+	}
+
+	cfg := DefaultConfig()
+
+	// Generate certificate
+	inputs := []string{"test.example.com"}
+	certPath, keyPath, err := generateCertificate(inputs, CertTypeTLS, false, "", "", cfg)
+	if err != nil {
+		t.Fatalf("Failed to generate certificate: %v", err)
+	}
+	defer os.Remove(certPath)
+	defer os.Remove(keyPath)
+
+	// Test with password
+	testPassword := "MySecureP@ssw0rd!"
+	p12Path := filepath.Join(tmpDir, "test-with-password.p12")
+	if err := generatePKCS12(certPath, keyPath, p12Path, testPassword); err != nil {
+		t.Fatalf("Failed to generate PKCS#12 with password: %v", err)
+	}
+	defer os.Remove(p12Path)
+
+	// Verify file exists
+	if _, err := os.Stat(p12Path); os.IsNotExist(err) {
+		t.Error("PKCS#12 file was not created")
+	}
+
+	// Verify file contains data
+	data, err := os.ReadFile(p12Path)
+	if err != nil {
+		t.Fatalf("Failed to read PKCS#12 file: %v", err)
+	}
+	if len(data) == 0 {
+		t.Error("PKCS#12 file is empty")
+	}
+
+	// Verify we can decode with the correct password
+	privateKey, cert, caCerts, err := pkcs12.DecodeChain(data, testPassword)
+	if err != nil {
+		t.Fatalf("Failed to decode PKCS#12 with correct password: %v", err)
+	}
+
+	if privateKey == nil {
+		t.Error("Private key is nil")
+	}
+	if cert == nil {
+		t.Error("Certificate is nil")
+	}
+	if len(caCerts) == 0 {
+		t.Error("No CA certificates in chain")
+	}
+
+	// Verify decoding with wrong password fails
+	_, _, _, err = pkcs12.DecodeChain(data, "wrongpassword")
+	if err == nil {
+		t.Error("Expected error when decoding with wrong password, got nil")
+	}
+
+	// Verify decoding with empty password fails (since we used a password)
+	_, _, _, err = pkcs12.DecodeChain(data, "")
+	if err == nil {
+		t.Error("Expected error when decoding password-protected file with empty password, got nil")
+	}
+}
+
+func TestGeneratePKCS12WithEmptyPassword(t *testing.T) {
+	// Create temp directory
+	tmpDir := t.TempDir()
+	customCADir = tmpDir
+	defer func() { customCADir = "" }()
+
+	// Install CA
+	if err := installCA(); err != nil {
+		t.Fatalf("Failed to install CA: %v", err)
+	}
+
+	cfg := DefaultConfig()
+
+	// Generate certificate
+	inputs := []string{"test.example.com"}
+	certPath, keyPath, err := generateCertificate(inputs, CertTypeTLS, false, "", "", cfg)
+	if err != nil {
+		t.Fatalf("Failed to generate certificate: %v", err)
+	}
+	defer os.Remove(certPath)
+	defer os.Remove(keyPath)
+
+	// Test with empty password (no protection)
+	p12Path := filepath.Join(tmpDir, "test-no-password.p12")
+	if err := generatePKCS12(certPath, keyPath, p12Path, ""); err != nil {
+		t.Fatalf("Failed to generate PKCS#12 without password: %v", err)
+	}
+	defer os.Remove(p12Path)
+
+	// Verify file exists
+	if _, err := os.Stat(p12Path); os.IsNotExist(err) {
+		t.Error("PKCS#12 file was not created")
+	}
+
+	// Verify we can decode with empty password
+	data, err := os.ReadFile(p12Path)
+	if err != nil {
+		t.Fatalf("Failed to read PKCS#12 file: %v", err)
+	}
+
+	privateKey, cert, caCerts, err := pkcs12.DecodeChain(data, "")
+	if err != nil {
+		t.Fatalf("Failed to decode PKCS#12 with empty password: %v", err)
+	}
+
+	if privateKey == nil {
+		t.Error("Private key is nil")
+	}
+	if cert == nil {
+		t.Error("Certificate is nil")
+	}
+	if len(caCerts) == 0 {
+		t.Error("No CA certificates in chain")
 	}
 }

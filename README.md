@@ -175,13 +175,17 @@ certy -ecdsa example.com
 For applications that require `.p12` or `.pfx` format:
 
 ```bash
+# No password (backward compatible)
 certy -pkcs12 example.com
 
-# Custom PKCS#12 path
-certy -pkcs12 -p12-file ./cert.p12 example.com
+# With password protection
+certy -pkcs12 -p12-password "MySecurePassword!" example.com
+
+# Custom PKCS#12 path with password
+certy -pkcs12 -p12-file ./cert.p12 -p12-password "secret" example.com
 ```
 
-**Note**: PKCS#12 files are generated with an empty password for simplicity.
+**Note**: PKCS#12 files support optional password protection. Use `-p12-password` flag to set a password, or omit it for no protection (backward compatible).
 
 ### Generate from CSR
 

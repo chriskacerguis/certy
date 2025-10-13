@@ -127,7 +127,7 @@ func TestIntegration_FullWorkflow(t *testing.T) {
 		defer os.Remove(keyPath)
 
 		p12Path := filepath.Join(tmpDir, "test.p12")
-		if err := generatePKCS12(certPath, keyPath, p12Path); err != nil {
+		if err := generatePKCS12(certPath, keyPath, p12Path, ""); err != nil {
 			t.Fatalf("Failed to generate PKCS#12: %v", err)
 		}
 		defer os.Remove(p12Path)
