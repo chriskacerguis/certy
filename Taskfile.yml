@@ -1,0 +1,233 @@
+version: '3'
+
+vars:
+  COVERAGE_DIR: coverage
+  COVERAGE_FILE: '{{.COVERAGE_DIR}}/coverage.out'
+  COVERAGE_HTML: '{{.COVERAGE_DIR}}/coverage.html'
+  VERSION:
+    sh: git describe --tags --always --dirty 2>/dev/null || echo "dev"
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+    silent: true
+
+  test:
+    desc: Run all tests
+    cmds:
+      - echo "Running all tests..."
+      - go test -v -race ./...
+
+  test:unit:
+    desc: Run unit tests only (excludes integration tests)
+    cmds:
+      - echo "Running unit tests..."
+      - go test -v -race -short ./...
+
+  test:integration:
+    desc: Run integration tests only
+    cmds:
+      - echo "Running integration tests..."
+      - go test -v -race -run Integration ./...
+
+  test:coverage:
+    desc: Run tests with coverage report
+    cmds:
+      - echo "Running tests with coverage..."
+      - mkdir -p {{.COVERAGE_DIR}}
+      - go test -v -race -coverprofile={{.COVERAGE_FILE}} -covermode=atomic ./...
+      - echo ""
+      - echo "Coverage summary:"
+      - go tool cover -func={{.COVERAGE_FILE}} | grep total
+      - echo ""
+      - echo "Generating HTML coverage report..."
+      - go tool cover -html={{.COVERAGE_FILE}} -o {{.COVERAGE_HTML}}
+      - echo "Coverage report generated at {{.COVERAGE_HTML}}"
+
+  test:coverage:html:
+    desc: Generate and open HTML coverage report
+    deps: [test:coverage]
+    cmds:
+      - echo "Opening coverage report in browser..."
+      - |
+        if command -v open > /dev/null 2>&1; then
+          open {{.COVERAGE_HTML}}
+        elif command -v xdg-open > /dev/null 2>&1; then
+          xdg-open {{.COVERAGE_HTML}}
+        else
+          echo "Please open {{.COVERAGE_HTML}} manually"
+        fi
+
+  test:quick:
+    desc: Quick test without race detector (faster)
+    cmds:
+      - go test ./...
+
+  test:ci:
+    desc: Run tests suitable for CI
+    deps: [vet]
+    cmds:
+      - echo "Running CI tests..."
+      - mkdir -p {{.COVERAGE_DIR}}
+      - go test -v -race -coverprofile={{.COVERAGE_FILE}} -covermode=atomic ./...
+      - go tool cover -func={{.COVERAGE_FILE}}
+
+  bench:
+    desc: Run benchmarks
+    cmds:
+      - echo "Running benchmarks..."
+      - go test -bench=. -benchmem ./...
+
+  vet:
+    desc: Run go vet
+    cmds:
+      - echo "Running go vet..."
+      - go vet ./...
+
+  fmt:
+    desc: Format code
+    cmds:
+      - echo "Formatting code..."
+      - go fmt ./...
+
+  fmt:check:
+    desc: Check if code is formatted
+    cmds:
+      - echo "Checking code format..."
+      - test -z "$(gofmt -l .)"
+
+  lint:
+    desc: Run linters
+    cmds:
+      - echo "Running linters..."
+      - |
+        if command -v golangci-lint > /dev/null 2>&1; then
+          golangci-lint run
+        else
+          echo "golangci-lint not installed. Run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"
+          exit 1
+        fi
+
+  build:
+    desc: Build the binary
+    cmds:
+      - echo "Building certy {{.VERSION}}..."
+      - go build -ldflags "-X main.version={{.VERSION}}" -o certy
+    generates:
+      - certy
+
+  build:all:
+    desc: Build for all platforms
+    cmds:
+      - echo "Building for all platforms..."
+      - task: build:linux
+      - task: build:darwin
+      - task: build:windows
+
+  build:linux:
+    desc: Build for Linux (amd64)
+    cmds:
+      - echo "Building for Linux amd64..."
+      - GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version={{.VERSION}}" -o dist/certy-linux-amd64
+    generates:
+      - dist/certy-linux-amd64
+
+  build:darwin:
+    desc: Build for macOS (amd64 and arm64)
+    cmds:
+      - echo "Building for macOS..."
+      - GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.version={{.VERSION}}" -o dist/certy-darwin-amd64
+      - GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.version={{.VERSION}}" -o dist/certy-darwin-arm64
+    generates:
+      - dist/certy-darwin-amd64
+      - dist/certy-darwin-arm64
+
+  build:windows:
+    desc: Build for Windows (amd64)
+    cmds:
+      - echo "Building for Windows amd64..."
+      - GOOS=windows GOARCH=amd64 go build -ldflags "-X main.version={{.VERSION}}" -o dist/certy-windows-amd64.exe
+    generates:
+      - dist/certy-windows-amd64.exe
+
+  install:
+    desc: Install the binary to $GOPATH/bin
+    cmds:
+      - echo "Installing certy..."
+      - go install -ldflags "-X main.version={{.VERSION}}"
+
+  clean:
+    desc: Clean test artifacts and build files
+    cmds:
+      - echo "Cleaning..."
+      - rm -rf {{.COVERAGE_DIR}}
+      - rm -f certy
+      - rm -rf dist/
+      - go clean -testcache
+
+  watch:
+    desc: Watch for changes and run tests (requires entr or watchexec)
+    cmds:
+      - |
+        if command -v watchexec > /dev/null 2>&1; then
+          echo "Watching for changes with watchexec..."
+          watchexec -e go -c clear -- task test:quick
+        elif command -v entr > /dev/null 2>&1; then
+          echo "Watching for changes with entr..."
+          find . -name '*.go' | entr -c task test:quick
+        else
+          echo "Please install 'watchexec' or 'entr' to use watch mode"
+          echo "  brew install watchexec    # macOS"
+          echo "  brew install entr         # macOS"
+          exit 1
+        fi
+
+  deps:
+    desc: Download dependencies
+    cmds:
+      - echo "Downloading dependencies..."
+      - go mod download
+
+  deps:tidy:
+    desc: Tidy dependencies
+    cmds:
+      - echo "Tidying dependencies..."
+      - go mod tidy
+
+  deps:verify:
+    desc: Verify dependencies
+    cmds:
+      - echo "Verifying dependencies..."
+      - go mod verify
+
+  check:
+    desc: Run all checks (fmt, vet, lint, test)
+    cmds:
+      - task: fmt:check
+      - task: vet
+      - task: lint
+      - task: test
+
+  ci:
+    desc: Run full CI pipeline
+    cmds:
+      - task: deps:verify
+      - task: fmt:check
+      - task: vet
+      - task: lint
+      - task: test:ci
+
+  dev:
+    desc: Setup development environment
+    cmds:
+      - echo "Setting up development environment..."
+      - task: deps
+      - |
+        if ! command -v golangci-lint > /dev/null 2>&1; then
+          echo "Installing golangci-lint..."
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+        fi
+      - echo "Development environment ready!"
+      - echo "Run 'task' to see available commands"

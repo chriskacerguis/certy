@@ -15,11 +15,12 @@ certy/
 ├── cert.go       # Certificate generation, SAN parsing, CSR handling
 ├── pkcs12.go     # PKCS12 export functionality
 ├── go.mod        # Dependencies: gopkg.in/yaml.v3, go-pkcs12
+├── Taskfile.yml  # Task runner (go-task) for development workflows
 └── .github/
     ├── copilot-instructions.md
     └── workflows/
         ├── build.yml  # Multi-platform release builds (triggered on tags)
-        └── ci.yml     # Continuous integration tests
+        └── ci.yml     # Continuous integration tests (uses go-task)
 ```
 
 ## Core Architecture
@@ -117,10 +118,22 @@ Hardcoded defaults (configurable via YAML):
 - End-entity certificates: 365 days (1 year)
 
 ### Build & Distribution
-- Single binary: `go build -ldflags "-X main.version=1.0.1" -o certy`
-- Version embedding: Uses `main.version` variable
+- Single binary: `task build` or `go build -ldflags "-X main.version=1.0.1" -o certy`
+- Version embedding: Uses `main.version` variable (auto-detected from git tags)
 - Cross-platform: Linux, macOS, Windows (no platform-specific code)
 - Binary size: ~5.7MB (includes all dependencies)
+- Multi-platform builds: `task build:all` for Linux, macOS, Windows
+
+### Development Workflow
+**Task runner (go-task):**
+- `task` - Show available commands
+- `task test` - Run all tests
+- `task test:coverage` - Tests with coverage report
+- `task build` - Build binary
+- `task lint` - Run linters
+- `task check` - Run all quality checks
+- `task ci` - Full CI pipeline
+- See `Taskfile.yml` for all tasks
 
 ### CI/CD Workflows
 **`build.yml`** - Automated release builds:
@@ -132,6 +145,7 @@ Hardcoded defaults (configurable via YAML):
 
 **`ci.yml`** - Continuous integration:
 - Triggered on: Push to main, pull requests
+- Uses go-task for all operations
 - Tests: Build verification, certificate generation, chain validation
 - Linting: golangci-lint with 5-minute timeout
 - Matrix testing: Ubuntu, macOS, Windows with Go 1.23

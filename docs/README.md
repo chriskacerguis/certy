@@ -34,6 +34,12 @@ This directory contains all documentation for the certy project.
   - Backward compatibility
   - Test coverage
 
+- **[TASK_MIGRATION.md](TASK_MIGRATION.md)** - Task runner migration
+  - Makefile → Taskfile.yml migration guide
+  - Task comparison table
+  - New features and workflows
+  - Installation and usage
+
 ### Project Information
 - **[SECURITY.md](SECURITY.md)** - Security policy and considerations
   - Supported versions
