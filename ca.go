@@ -60,6 +60,11 @@ func installCA() error {
 		return fmt.Errorf("failed to save intermediate CA: %w", err)
 	}
 
+	// Save intermediate CA fullchain (intermediate + root)
+	if err := saveFullChain(intCert, rootCert); err != nil {
+		return fmt.Errorf("failed to save intermediate CA fullchain: %w", err)
+	}
+
 	// Initialize serial number file
 	serialPath, err := getCAFilePath("serial.txt")
 	if err != nil {
@@ -210,6 +215,40 @@ func saveKeyAndCert(key *rsa.PrivateKey, cert *x509.Certificate, baseName string
 	}
 	if err := pem.Encode(certFile, certPEM); err != nil {
 		return fmt.Errorf("failed to write certificate file: %w", err)
+	}
+
+	return nil
+}
+
+// saveFullChain saves the intermediate CA and root CA as a fullchain PEM file
+func saveFullChain(intCert, rootCert *x509.Certificate) error {
+	fullchainPath, err := getCAFilePath("intermediateCA-fullchain.pem")
+	if err != nil {
+		return err
+	}
+
+	fullchainFile, err := os.Create(fullchainPath)
+	if err != nil {
+		return fmt.Errorf("failed to create fullchain file: %w", err)
+	}
+	defer fullchainFile.Close()
+
+	// Write intermediate CA certificate first
+	intCertPEM := &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: intCert.Raw,
+	}
+	if err := pem.Encode(fullchainFile, intCertPEM); err != nil {
+		return fmt.Errorf("failed to write intermediate certificate: %w", err)
+	}
+
+	// Write root CA certificate second
+	rootCertPEM := &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: rootCert.Raw,
+	}
+	if err := pem.Encode(fullchainFile, rootCertPEM); err != nil {
+		return fmt.Errorf("failed to write root certificate: %w", err)
 	}
 
 	return nil
