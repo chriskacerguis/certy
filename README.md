@@ -193,6 +193,115 @@ certy -pkcs12 -p12-file ./cert.p12 -p12-password "secret" example.com
 certy -csr request.csr -cert-file signed.pem
 ```
 
+### Certificate Revocation Lists (CRL)
+
+Certy supports generating Certificate Revocation Lists (CRLs) for managing revoked certificates. This is especially important for production-like environments where you need to invalidate compromised certificates.
+
+#### Configure CRL URL
+
+First, add a CRL distribution point URL to your configuration (`~/.certy/config.yml`):
+
+```yaml
+crl_url: http://crl.example.com/intermediate.crl
+```
+
+This URL will be embedded in all certificates issued **after** you run `-install` with this configuration. Reinstall the CA to apply:
+
+```bash
+# Edit config.yml to add crl_url, then:
+certy -install  # Updates the intermediate CA with CRL distribution point
+```
+
+#### Revoke a Certificate
+
+To revoke a certificate by its serial number:
+
+```bash
+# Find the serial number
+openssl x509 -in certificate.pem -noout -serial
+
+# Revoke it (serial number in decimal or hex)
+certy -revoke 1
+# or with hex serial from openssl
+certy -revoke 0x01
+```
+
+**Revocation reasons** (optional, defaults to 0):
+- `0` - Unspecified
+- `1` - Key compromise
+- `2` - CA compromise
+- `3` - Affiliation changed
+- `4` - Superseded
+- `5` - Cessation of operation
+
+#### Generate CRL File
+
+After revoking certificates, generate an updated CRL:
+
+```bash
+# Generate CRL in default location (~/.certy/crl.pem)
+certy -gencrl
+
+# Or specify custom output path
+certy -gencrl /var/www/crl/intermediate.crl
+```
+
+The CRL file:
+- Contains all revoked certificates with their serial numbers and revocation dates
+- Is signed by the intermediate CA
+- Has a validity period of 30 days
+- Should be regenerated periodically and published at the CRL URL
+
+#### Verify Certificate Against CRL
+
+Use OpenSSL to verify that a certificate hasn't been revoked:
+
+```bash
+openssl verify -CAfile ~/.certy/rootCA.pem \
+  -untrusted ~/.certy/intermediateCA.pem \
+  -crl_check \
+  -CRLfile ~/.certy/crl.pem \
+  certificate.pem
+```
+
+**Example output for revoked certificate:**
+```
+CN=test.example.com
+error 23 at 0 depth lookup: certificate revoked
+error certificate.pem: verification failed
+```
+
+#### CRL Workflow Example
+
+```bash
+# 1. Configure CRL URL
+echo "crl_url: http://crl.example.com/intermediate.crl" >> ~/.certy/config.yml
+
+# 2. Reinstall CA to add CRL distribution point
+certy -install
+
+# 3. Generate certificates (they now include CRL URL)
+certy example.com
+
+# 4. If a certificate needs to be revoked:
+certy -revoke 1
+
+# 5. Generate updated CRL and publish it
+certy -gencrl /var/www/crl/intermediate.crl
+
+# 6. Verify certificate status
+openssl verify -CAfile ~/.certy/rootCA.pem \
+  -untrusted ~/.certy/intermediateCA.pem \
+  -crl_check \
+  -CRLfile /var/www/crl/intermediate.crl \
+  example.com.pem
+```
+
+**Important**: The CRL file should be:
+- Published at the URL configured in `crl_url`
+- Regenerated regularly (before the 30-day validity expires)
+- Updated whenever certificates are revoked
+
 ## Configuration
 
 Configuration is stored at `~/.certy/config.yml`:
@@ -203,6 +312,7 @@ root_ca_validity_days: 3650         # Root CA validity (10 years)
 intermediate_ca_validity_days: 1825 # Intermediate CA validity (5 years)
 default_key_type: rsa               # Key algorithm (rsa or ecdsa)
 default_key_size: 2048              # RSA key size
+crl_url: ""                         # Optional: CRL distribution point URL
 ```
 
 You can edit this file to customize defaults. CLI flags always override config values.

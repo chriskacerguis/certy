@@ -24,8 +24,14 @@ func installCA() error {
 		return fmt.Errorf("failed to create certy directory: %w", err)
 	}
 
-	// Load or create config
-	cfg := DefaultConfig()
+	// Load existing config if present, otherwise use defaults
+	cfg, err := loadConfig()
+	if err != nil {
+		// If config doesn't exist, use defaults
+		cfg = DefaultConfig()
+	}
+	
+	// Save config to ensure it exists
 	if err := saveConfig(cfg); err != nil {
 		return fmt.Errorf("failed to save config: %w", err)
 	}
@@ -86,7 +92,7 @@ func generateRootCA(cfg *Config) (*rsa.PrivateKey, *x509.Certificate, error) {
 			CommonName:   "Certy Root CA",
 			Organization: []string{"Certy"},
 		},
-		NotBefore:             time.Now(),
+		NotBefore:             time.Now().AddDate(0, 0, -1),
 		NotAfter:              time.Now().AddDate(0, 0, cfg.RootCAValidityDays),
 		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
 		BasicConstraintsValid: true,
@@ -130,13 +136,18 @@ func generateIntermediateCA(rootKey *rsa.PrivateKey, rootCert *x509.Certificate,
 			CommonName:   "Certy Intermediate CA",
 			Organization: []string{"Certy"},
 		},
-		NotBefore:             time.Now(),
+		NotBefore:             time.Now().AddDate(0, 0, -1),
 		NotAfter:              time.Now().AddDate(0, 0, cfg.IntCAValidityDays),
 		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
 		BasicConstraintsValid: true,
 		IsCA:                  true,
 		MaxPathLen:            0,
 		MaxPathLenZero:        true,
+	}
+
+	// Add CRL distribution point if configured
+	if cfg.CRLURL != "" {
+		template.CRLDistributionPoints = []string{cfg.CRLURL}
 	}
 
 	// Create certificate signed by root CA

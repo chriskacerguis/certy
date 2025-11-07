@@ -14,6 +14,7 @@ certy/
 ├── ca.go         # CA generation (root + intermediate), key/cert persistence
 ├── cert.go       # Certificate generation, SAN parsing, CSR handling
 ├── pkcs12.go     # PKCS12 export functionality
+├── crl.go        # CRL generation and certificate revocation (v1.0.4+)
 ├── go.mod        # Dependencies: gopkg.in/yaml.v3, go-pkcs12
 ├── Taskfile.yml  # Task runner (go-task) for development workflows
 └── .github/
@@ -59,8 +60,11 @@ Certificates follow this pattern based on first domain/identifier plus count:
 - `-cert-file FILE`, `-key-file FILE`, `-p12-file FILE`: Custom output paths
 - `-client`: Generate client authentication certificate
 - `-ecdsa`: Use ECDSA P-256 instead of RSA 2048-bit for key generation
-- `-pkcs12`: Generate .p12/.pfx file (no password protection)
+- `-pkcs12`: Generate .p12/.pfx file (optional password protection, v1.0.3+)
+- `-p12-password PASSWORD`: Set password for PKCS#12 file (optional, v1.0.3+)
 - `-csr CSR`: Generate from CSR (conflicts with all flags except `-install`, `-ca-dir`, and `-cert-file`)
+- `-gencrl FILE`: Generate Certificate Revocation List (CRL) to specified file (v1.0.4+)
+- `-revoke SERIAL`: Revoke certificate by serial number (decimal or hex) (v1.0.4+)
 
 ### Input Detection Logic
 Smart auto-detection implemented in `cert.go`:
@@ -100,6 +104,7 @@ root_ca_validity_days: 3650         # Root CA validity (10 years)
 intermediate_ca_validity_days: 1825 # Intermediate CA validity (5 years)
 default_key_type: rsa               # Key algorithm (rsa or ecdsa)
 default_key_size: 2048              # RSA key size in bits
+crl_url: ""                         # Optional: CRL distribution point URL (v1.0.4+)
 ```
 
 **Configuration Validation** (v1.0.2+):
@@ -107,9 +112,8 @@ All config parameters are validated on load and save via `validateConfig()`:
 - Validity periods: Enforces min/max bounds and hierarchy constraints
 - Key types: Only `rsa` or `ecdsa` allowed
 - Key sizes: RSA (2048/3072/4096), ECDSA (256/384/521)
+- CRL URL: Optional field (v1.0.4+)
 - See `docs/CONFIG_VALIDATION.md` for complete validation rules
-default_key_size: 2048              # RSA key size in bits
-```
 
 ### Certificate Validity Periods
 Hardcoded defaults (configurable via YAML):
@@ -190,13 +194,21 @@ Hardcoded defaults (configurable via YAML):
 **`pkcs12.go`**:
 - `generatePKCS12()`: Creates .p12 file from cert + key (optional password protection, v1.0.3+)
 
+**`crl.go`** (v1.0.4+):
+- `generateCRL()`: Creates CRL file from revoked certificates database
+- `revokeCertificate()`: Adds certificate to revoked.db by serial number
+- `loadRevokedCertificates()`: Loads revoked certificates from database
+- `loadIntermediateCAForCRL()`: Helper function for loading intermediate CA
+- `splitLines()`: Helper for parsing text files
+
 ## Testing Approach
-**Test Coverage:** 64.3% code coverage with 98 comprehensive test cases
+**Test Coverage:** 61.2% code coverage with 108 comprehensive test cases
 
 **Test Files:**
 - `ca_test.go` - CA generation and certificate chain tests
 - `cert_test.go` - Certificate generation and SAN parsing tests
 - `config_test.go` - Configuration management and validation tests (23 subtests)
+- `crl_test.go` - CRL generation and revocation tests (8 tests, v1.0.4+)
 - `csr_test.go` - CSR-based certificate generation tests
 - `integration_test.go` - End-to-end workflow tests
 - `pkcs12_test.go` - PKCS12 export tests
@@ -208,10 +220,13 @@ Validated scenarios:
 - ✅ Client authentication certificates
 - ✅ ECDSA key generation (P-256 curve)
 - ✅ PKCS12 export with certificate chain
+- ✅ PKCS12 password protection (v1.0.3+)
 - ✅ Certificate chain validation (root → intermediate → end-entity)
 - ✅ Configuration validation (all parameter bounds and constraints)
 - ✅ Sequential serial number tracking
 - ✅ Filename sanitization for special characters
+- ✅ CRL generation and certificate revocation (v1.0.4+)
+- ✅ CRL distribution points in intermediate CA (v1.0.4+)
 
 ## Common Workflows
 

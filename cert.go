@@ -72,7 +72,7 @@ func generateCertificate(inputs []string, certType CertificateType, useECDSA boo
 		Subject: pkix.Name{
 			CommonName: commonName,
 		},
-		NotBefore:             time.Now(),
+		NotBefore:             time.Now().AddDate(0, 0, -1),
 		NotAfter:              time.Now().AddDate(0, 0, cfg.DefaultValidityDays),
 		DNSNames:              dnsNames,
 		IPAddresses:           ipAddresses,
@@ -314,7 +314,7 @@ func generateFromCSR(csrPath, certFile string, cfg *Config) (string, error) {
 	template := &x509.Certificate{
 		SerialNumber:          big.NewInt(serial),
 		Subject:               csr.Subject,
-		NotBefore:             time.Now(),
+		NotBefore:             time.Now().AddDate(0, 0, -1),
 		NotAfter:              time.Now().AddDate(0, 0, cfg.DefaultValidityDays),
 		DNSNames:              csr.DNSNames,
 		IPAddresses:           csr.IPAddresses,

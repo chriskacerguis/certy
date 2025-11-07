@@ -15,6 +15,7 @@ type Config struct {
 	IntCAValidityDays   int    `yaml:"intermediate_ca_validity_days"`
 	DefaultKeyType      string `yaml:"default_key_type"`
 	DefaultKeySize      int    `yaml:"default_key_size"`
+	CRLURL              string `yaml:"crl_url,omitempty"` // Optional CRL distribution point URL
 }
 
 // DefaultConfig returns the default configuration
@@ -25,6 +26,7 @@ func DefaultConfig() *Config {
 		IntCAValidityDays:   1825,
 		DefaultKeyType:      "rsa",
 		DefaultKeySize:      2048,
+		CRLURL:              "", // No CRL URL by default
 	}
 }
 

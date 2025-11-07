@@ -24,6 +24,8 @@ func main() {
 	ecdsaFlag := flag.Bool("ecdsa", false, "Generate a certificate with an ECDSA key")
 	pkcs12Flag := flag.Bool("pkcs12", false, "Generate a PKCS#12 file")
 	csrFlag := flag.String("csr", "", "Generate a certificate based on the supplied CSR")
+	gencrlFlag := flag.String("gencrl", "", "Generate a CRL (Certificate Revocation List) file")
+	revokeFlag := flag.String("revoke", "", "Revoke a certificate by serial number")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "certy %s - Simple Certificate Authority CLI\n\n", version)
@@ -33,7 +35,9 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  certy -install                                    # Initialize CA infrastructure\n")
 		fmt.Fprintf(os.Stderr, "  certy example.com \"*.example.com\" 127.0.0.1      # Generate TLS certificate\n")
 		fmt.Fprintf(os.Stderr, "  certy user@domain.com                             # Generate S/MIME certificate\n")
-		fmt.Fprintf(os.Stderr, "  certy -client user@domain.com                     # Generate client auth certificate\n\n")
+		fmt.Fprintf(os.Stderr, "  certy -client user@domain.com                     # Generate client auth certificate\n")
+		fmt.Fprintf(os.Stderr, "  certy -gencrl crl.pem                             # Generate CRL file\n")
+		fmt.Fprintf(os.Stderr, "  certy -revoke 1234567890                          # Revoke a certificate\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		flag.PrintDefaults()
 	}
@@ -52,6 +56,35 @@ func main() {
 			fatal("Failed to get CA directory: %v", err)
 		}
 		fmt.Println(dir)
+		return
+	}
+
+	// Handle -revoke flag
+	if *revokeFlag != "" {
+		if !caExists() {
+			fatal("CA not found. Please run 'certy -install' first to initialize the CA infrastructure.")
+		}
+		if err := revokeCertificate(*revokeFlag, 0); err != nil {
+			fatal("Failed to revoke certificate: %v", err)
+		}
+		fmt.Printf("✓ Certificate with serial %s revoked successfully\n", *revokeFlag)
+		fmt.Println("  Run 'certy -gencrl' to update the CRL")
+		return
+	}
+
+	// Handle -gencrl flag
+	if *gencrlFlag != "" {
+		if !caExists() {
+			fatal("CA not found. Please run 'certy -install' first to initialize the CA infrastructure.")
+		}
+		if err := generateCRL(*gencrlFlag); err != nil {
+			fatal("Failed to generate CRL: %v", err)
+		}
+		outputPath := *gencrlFlag
+		if outputPath == "" {
+			outputPath, _ = getCAFilePath("crl.pem")
+		}
+		fmt.Printf("✓ CRL generated successfully: %s\n", outputPath)
 		return
 	}
 
