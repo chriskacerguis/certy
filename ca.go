@@ -30,7 +30,7 @@ func installCA() error {
 		// If config doesn't exist, use defaults
 		cfg = DefaultConfig()
 	}
-	
+
 	// Save config to ensure it exists
 	if err := saveConfig(cfg); err != nil {
 		return fmt.Errorf("failed to save config: %w", err)
