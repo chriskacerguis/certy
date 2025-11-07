@@ -15,8 +15,8 @@ type Config struct {
 	IntCAValidityDays   int    `yaml:"intermediate_ca_validity_days"`
 	DefaultKeyType      string `yaml:"default_key_type"`
 	DefaultKeySize      int    `yaml:"default_key_size"`
-	CRLURL              string `yaml:"crl_url"`   // CRL distribution point URL
-	OCSPURL             string `yaml:"ocsp_url"`  // OCSP responder URL
+	CRLURL              string `yaml:"crl_url"`  // CRL distribution point URL
+	OCSPURL             string `yaml:"ocsp_url"` // OCSP responder URL
 }
 
 // DefaultConfig returns the default configuration
@@ -27,8 +27,8 @@ func DefaultConfig() *Config {
 		IntCAValidityDays:   1825,
 		DefaultKeyType:      "rsa",
 		DefaultKeySize:      2048,
-		CRLURL:              "http://crl.local/intermediate.crl",  // Default CRL distribution point
-		OCSPURL:             "http://ocsp.local",                   // Default OCSP responder URL
+		CRLURL:              "http://crl.local/intermediate.crl", // Default CRL distribution point
+		OCSPURL:             "http://ocsp.local",                 // Default OCSP responder URL
 	}
 }
 
