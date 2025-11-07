@@ -26,7 +26,7 @@ func DefaultConfig() *Config {
 		IntCAValidityDays:   1825,
 		DefaultKeyType:      "rsa",
 		DefaultKeySize:      2048,
-		CRLURL:              "", // No CRL URL by default
+		CRLURL:              "http://crl.local/intermediate.crl", // Default CRL distribution point
 	}
 }
 
