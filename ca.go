@@ -150,6 +150,11 @@ func generateIntermediateCA(rootKey *rsa.PrivateKey, rootCert *x509.Certificate,
 		template.CRLDistributionPoints = []string{cfg.CRLURL}
 	}
 
+	// Add OCSP server URL if configured
+	if cfg.OCSPURL != "" {
+		template.OCSPServer = []string{cfg.OCSPURL}
+	}
+
 	// Create certificate signed by root CA
 	certDER, err := x509.CreateCertificate(rand.Reader, template, rootCert, &privateKey.PublicKey, rootKey)
 	if err != nil {
