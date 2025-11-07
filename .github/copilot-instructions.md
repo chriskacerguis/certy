@@ -198,7 +198,6 @@ Hardcoded defaults (configurable via YAML):
 - `generateCRL()`: Creates CRL file from revoked certificates database
 - `revokeCertificate()`: Adds certificate to revoked.db by serial number
 - `loadRevokedCertificates()`: Loads revoked certificates from database
-- `loadIntermediateCAForCRL()`: Helper function for loading intermediate CA
 - `splitLines()`: Helper for parsing text files
 
 ## Testing Approach

@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/rand"
-	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
@@ -221,49 +220,4 @@ func revokeCertificate(serialNumber string, reason int) error {
 	return nil
 }
 
-// loadIntermediateCAForCRL is a helper that returns just the key and cert
-func loadIntermediateCAForCRL() (*rsa.PrivateKey, *x509.Certificate, error) {
-	// Load intermediate CA private key
-	intKeyPath, err := getCAFilePath("intermediateCA-key.pem")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	keyData, err := os.ReadFile(intKeyPath)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to read intermediate CA key: %w", err)
-	}
-
-	keyBlock, _ := pem.Decode(keyData)
-	if keyBlock == nil {
-		return nil, nil, fmt.Errorf("failed to decode intermediate CA key PEM")
-	}
-
-	intKey, err := x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to parse intermediate CA key: %w", err)
-	}
-
-	// Load intermediate CA certificate
-	intCertPath, err := getCAFilePath("intermediateCA.pem")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	certData, err := os.ReadFile(intCertPath)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to read intermediate CA certificate: %w", err)
-	}
-
-	certBlock, _ := pem.Decode(certData)
-	if certBlock == nil {
-		return nil, nil, fmt.Errorf("failed to decode intermediate CA certificate PEM")
-	}
-
-	intCert, err := x509.ParseCertificate(certBlock.Bytes)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to parse intermediate CA certificate: %w", err)
-	}
-
-	return intKey, intCert, nil
-}
+// splitLines splits a string by newlines
