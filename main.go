@@ -14,6 +14,7 @@ var customCADir string // Global variable for custom CA directory
 func main() {
 	// Define flags
 	installFlag := flag.Bool("install", false, "Create a rootCA with an intermediateCA")
+	reinstallFlag := flag.Bool("reinstall", false, "Regenerate CA certificates (useful after config changes)")
 	caDirFlag := flag.String("ca-dir", "", "Custom directory for CA files (default: ~/.certy or $CAROOT)")
 	carootFlag := flag.Bool("CAROOT", false, "Print the CA root directory path and exit")
 	certFileFlag := flag.String("cert-file", "", "Customize the certificate output path")
@@ -33,6 +34,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  certy [options] [domains/IPs/email...]\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
 		fmt.Fprintf(os.Stderr, "  certy -install                                    # Initialize CA infrastructure\n")
+		fmt.Fprintf(os.Stderr, "  certy -reinstall                                  # Regenerate CA after config changes\n")
 		fmt.Fprintf(os.Stderr, "  certy example.com \"*.example.com\" 127.0.0.1      # Generate TLS certificate\n")
 		fmt.Fprintf(os.Stderr, "  certy user@domain.com                             # Generate S/MIME certificate\n")
 		fmt.Fprintf(os.Stderr, "  certy -client user@domain.com                     # Generate client auth certificate\n")
@@ -56,6 +58,18 @@ func main() {
 			fatal("Failed to get CA directory: %v", err)
 		}
 		fmt.Println(dir)
+		return
+	}
+
+	// Handle -reinstall flag
+	if *reinstallFlag {
+		if !caExists() {
+			fatal("CA not found. Please run 'certy -install' first to initialize the CA infrastructure.")
+		}
+		if err := installCA(); err != nil {
+			fatal("Failed to reinstall CA: %v", err)
+		}
+		fmt.Println("✓ CA certificates regenerated successfully")
 		return
 	}
 
